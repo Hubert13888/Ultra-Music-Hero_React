@@ -1,0 +1,27 @@
+body {
+  margin: 0;
+}
+.game {
+  display: flex;
+  flex-direction: row;
+}
+.game_field {
+  width: 1vw;
+  border-right: solid #000 1px;
+}
+.game_stripe {
+  height: 10vh;
+  width: 100%;
+}
+.stripe0 {
+  background-color: blue;
+}
+.stripe1 {
+  background-color: red;
+}
+.stripe2 {
+  background-color: yellow;
+}
+.stripe3 {
+  background-color: green;
+}
