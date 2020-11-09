@@ -5,23 +5,36 @@ body {
   display: flex;
   flex-direction: row;
 }
+.clearer {
+  filter: grayscale(100%);
+}
 .game_field {
   width: 5vw;
   border-right: solid #000 1px;
 }
+
+@keyframes tile_animation {
+  from {
+    transform: translate(0, -50%);
+  }
+  to {
+    transform: translate(calc(-105vw), -50%);
+  }
+}
+
 .game_stripe {
   position: relative;
   height: 10vh;
   width: 100%;
-
+  .tile_animate {
+    animation: tile_animation forwards linear; 
+  }
   img {
     position: absolute;
     top: 50%;
-    left: 0%;
-    transform: translateY(-50%);
+    left: 100%;
   }
   .goLeft {
-    transform: translate(-100vw, -50%);
   }
 }
 .stripe0 {
