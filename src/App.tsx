@@ -12,6 +12,7 @@ interface Tiles {
   x: number;
   hexNote: number;
   type: string;
+  wasHit: boolean;
 }
 
 interface GameState {
@@ -38,6 +39,51 @@ class Game extends React.Component<GameProps> {
   }
   componentDidMount() {
     this.newGame();
+
+    window.onkeydown = (e) => {
+      if (e.keyCode >= 37 && e.keyCode <= 40) {
+        let direction: string;
+
+        if (e.keyCode === 38) {
+          //up
+          direction = "U";
+        }
+        if (e.keyCode === 37) {
+          //left
+          direction = "L";
+        }
+        if (e.keyCode === 40) {
+          //down
+          direction = "D";
+        }
+        if (e.keyCode === 39) {
+          //right
+          direction = "R";
+        }
+
+        let tilesCpy = [...this.state.tiles],
+          newTiles = [],
+          emptyHit = true;
+
+        for (let tile of tilesCpy) {
+          if (tile.type === direction) {
+            let fromLeftEdge = 19 - (this.state.currHexNote - tile.hexNote);
+
+            if (fromLeftEdge === 4 || fromLeftEdge === 5) {
+              //zapisz state'a dla elementu jako trafioneo
+              emptyHit = false;
+              newTiles.push({
+                ...tile,
+                wasHit: true
+              });
+              continue;
+            }
+          }
+          newTiles.push(tile);
+        }
+        if (!emptyHit) this.setState({ tiles: newTiles });
+      }
+    };
   }
   newGame() {
     let fields = [],
@@ -45,20 +91,23 @@ class Game extends React.Component<GameProps> {
         {
           x: 0,
           hexNote: 0,
+          wasHit: false,
           type: "U"
         },
         {
           x: 1,
           hexNote: 5,
+          wasHit: false,
           type: "L"
         },
         {
           x: 2,
           hexNote: 9,
+          wasHit: false,
           type: "D"
         }
       ],
-      bpm = 80;
+      bpm = 120;
     for (let i = 0; i < 20; i++) {
       fields.push({
         x: i
@@ -101,7 +150,10 @@ class Game extends React.Component<GameProps> {
                             <img
                               src=""
                               alt="x"
-                              className="tile_animate"
+                              className={Classnames({
+                                tile_animate: true,
+                                hit: tile.wasHit
+                              })}
                               style={{
                                 animationDuration: `${300 / this.state.bpm}s`
                               }}
