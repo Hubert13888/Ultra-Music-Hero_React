@@ -1,4 +1,5 @@
 import React from "react";
+import Slider from "./Slider";
 import Classnames from "classnames";
 import "./gameStyles.scss";
 
@@ -12,7 +13,9 @@ interface Tiles {
   x: number;
   hexNote: number;
   type: string;
-  wasHit: boolean;
+  wasHit?: boolean;
+  length?: number;
+  isActivated?: boolean;
 }
 
 interface GameState {
@@ -31,7 +34,16 @@ class Game extends React.Component<GameProps> {
     currHexNote: 0
   };
 
-  compareLetters = ["U", "L", "R", "D"];
+  slidersRef = React.createRef();
+
+  compareLetters = [
+    ["U", "1"],
+    ["L", "2"],
+    ["R", "3"],
+    ["D", "4"]
+  ];
+  sliders = ["1", "2", "3", "4"];
+  notes = ["U", "D", "L", "R"];
 
   constructor(props: GameProps) {
     super(props);
@@ -41,7 +53,10 @@ class Game extends React.Component<GameProps> {
     this.newGame();
 
     window.onkeydown = (e) => {
-      if (e.keyCode >= 37 && e.keyCode <= 40) {
+      if (
+        (e.keyCode >= 37 && e.keyCode <= 40) ||
+        (e.keyCode >= 49 && e.keyCode <= 52)
+      ) {
         let direction: string;
 
         if (e.keyCode === 38) {
@@ -60,6 +75,18 @@ class Game extends React.Component<GameProps> {
           //right
           direction = "R";
         }
+        if (e.keyCode === 49) {
+          direction = "1";
+        }
+        if (e.keyCode === 50) {
+          direction = "2";
+        }
+        if (e.keyCode === 51) {
+          direction = "3";
+        }
+        if (e.keyCode === 52) {
+          direction = "4";
+        }
 
         let tilesCpy = [...this.state.tiles],
           newTiles = [],
@@ -74,14 +101,52 @@ class Game extends React.Component<GameProps> {
               emptyHit = false;
               newTiles.push({
                 ...tile,
-                wasHit: true
+                wasHit: true,
+                isActivated: true
               });
+              if (this.sliders.includes(direction)) {
+                this.slidersRef.current.activated(tile.x);
+              }
               continue;
             }
           }
           newTiles.push(tile);
         }
         if (!emptyHit) this.setState({ tiles: newTiles });
+      }
+    };
+
+    onkeyup = (e: any) => {
+      if (e.keyCode >= 49 && e.keyCode <= 52) {
+        let direction: string;
+
+        if (e.keyCode === 49) {
+          direction = "1";
+        }
+        if (e.keyCode === 50) {
+          direction = "2";
+        }
+        if (e.keyCode === 51) {
+          direction = "3";
+        }
+        if (e.keyCode === 52) {
+          direction = "4";
+        }
+        let tilesCpy = [...this.state.tiles],
+          newTiles = [];
+
+        for (let tile of tilesCpy) {
+          if (tile.type === direction && tile.isActivated === true) {
+            newTiles.push({
+              ...tile,
+              isActivated: false
+            });
+            if (this.sliders.includes(direction)) {
+              this.slidersRef.current.disactivated(tile.x);
+            }
+            break;
+          }
+        }
       }
     };
   }
@@ -91,23 +156,22 @@ class Game extends React.Component<GameProps> {
         {
           x: 0,
           hexNote: 0,
-          wasHit: false,
-          type: "U"
+          isActivated: false,
+          length: 5,
+          type: "3"
         },
         {
           x: 1,
           hexNote: 5,
-          wasHit: false,
           type: "L"
         },
         {
           x: 2,
           hexNote: 9,
-          wasHit: false,
           type: "D"
         }
       ],
-      bpm = 120;
+      bpm = 20;
     for (let i = 0; i < 20; i++) {
       fields.push({
         x: i
@@ -123,7 +187,7 @@ class Game extends React.Component<GameProps> {
         this.setState((prev: GameState) => ({
           currHexNote: prev.currHexNote + 1
         }));
-      }, (150 / bpm) * 100 * 20000)
+      }, (150 / bpm) * 100)
     });
   }
   render() {
@@ -144,20 +208,36 @@ class Game extends React.Component<GameProps> {
                       {i === this.state.fields.length - 1 ? (
                         //up
                         this.state.tiles.map((tile) => {
-                          return tile.type === this.compareLetters[j] &&
+                          return this.compareLetters[j].includes(tile.type) &&
                             this.state.currHexNote >= tile.hexNote &&
-                            this.state.currHexNote <= tile.hexNote + 21 ? (
-                            <img
-                              src=""
-                              alt="x"
-                              className={Classnames({
-                                tile_animate: true,
-                                hit: tile.wasHit
-                              })}
-                              style={{
-                                animationDuration: `${300 / this.state.bpm}s`
-                              }}
-                            />
+                            this.state.currHexNote <=
+                              tile.hexNote +
+                                21 +
+                                (tile.length ? tile.length : 0) ? (
+                            this.notes.includes(tile.type) ? (
+                              <img
+                                src=""
+                                alt="x"
+                                className={Classnames({
+                                  tile_animate: true,
+                                  hit: tile.wasHit
+                                })}
+                                style={{
+                                  animationDuration: `${300 / this.state.bpm}s`
+                                }}
+                              />
+                            ) : (
+                              <Slider
+                                parent={this}
+                                id={tile.x}
+                                length={5}
+                                number={3}
+                                bpm={this.state.bpm}
+                                type=""
+                                callback={() => {}}
+                                ref={this.slidersRef}
+                              />
+                            )
                           ) : (
                             <></>
                           );

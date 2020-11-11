@@ -1,0 +1,40 @@
+.slider {
+  position: absolute;
+  left: 200%;
+  --slider_height: 10vw;
+  --hex_width: 5vw;
+  max-height: 10vh;
+  min-height: 10vh;
+  display: flex;
+  position: relative;
+  align-items: center;
+  height: var(--slider_height);
+  background-color: transparent;
+  * {
+    display: flex;
+  }
+  .slider_handle {
+    position: absolute;
+    left: -5vw;
+    z-index: 1;
+    background-color: transparent;
+    width: var(--slider_height);
+    height: var(--slider_height);
+    display: grid;
+    place-items: center;
+    background-color: transparent;
+
+    span {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      right: 0;
+      height: 10vh;
+    }
+  }
+  .slider_bar {
+    position: absolute;
+    align-items: center;
+    height: 15px;
+  }
+}
