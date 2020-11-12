@@ -11,12 +11,7 @@ interface SliderProps {
   length: number;
   bpm: number;
   type: string;
-  callback: () => void;
-}
-
-interface TrainPiece {
-  x: number;
-  active: boolean;
+  addPoints: (pointAmount: number) => void;
 }
 
 interface SliderState {
@@ -28,8 +23,9 @@ interface SliderState {
   type: string;
   stopCircle: boolean;
   bar_compl: number;
+  bar_compl_interv?: any;
   bar_gradient: string;
-  callback: () => void;
+  addPoints: (pointAmount: number) => void;
 }
 
 export default class Slider extends React.Component<SliderProps> {
@@ -42,31 +38,39 @@ export default class Slider extends React.Component<SliderProps> {
     bar_gradient: `linear-gradient(90deg, rgba(230,230,230,1) 0%, rgba(0,83,99,1) 0%`,
     bar_compl: 0,
     stopCircle: false,
-    callback: () => {}
+    addPoints: (pointAmount: number) => {}
   };
   constructor(props: SliderProps) {
     super(props);
 
     this.state.id = props.id;
-    this.state.parent = props.parent;
 
     this.state.number = props.number;
     this.state.type = props.type;
     this.state.bpm = props.bpm;
-    this.state.callback = props.callback;
+    this.state.addPoints = props.addPoints;
     this.state.length = props.length;
   }
-
   activated(id: number) {
     if (this.state.id === id) {
       let progress = this.state.bar_compl + 1;
-      this.setState((prev) => ({
-        stopCircle: true,
-        bar_compl: prev.bar_compl + 1,
-        bar_gradient: `linear-gradient(90deg, rgba(230,230,230,1) ${
-          prev.bar_compl + 1
-        }%, rgba(0,83,99,1) ${prev.bar_compl + 2}%)`
-      }));
+      if (!this.state.stopCircle) {
+        this.setState({
+          stopCircle: true,
+          bar_compl_interv: setInterval(() => {
+            this.setState((prev: SliderState) => ({
+              bar_compl: prev.bar_compl + 1,
+              bar_gradient: `linear-gradient(90deg, rgba(230,230,230,1) ${
+                prev.bar_compl + 1
+              }%, rgba(0,83,99,1) ${prev.bar_compl + 2}%)`
+            }));
+            this.state.addPoints(1);
+            if (this.state.bar_compl === 100) {
+              this.disactivated(this.state.id);
+            }
+          }, ((3 * this.state.length) / (25 * this.state.bpm)) * 1000)
+        });
+      }
     }
   }
   disactivated(id: number) {
@@ -74,6 +78,7 @@ export default class Slider extends React.Component<SliderProps> {
       this.setState({
         stopCircle: false
       });
+      clearInterval(this.state.bar_compl_interv);
     }
   }
 
