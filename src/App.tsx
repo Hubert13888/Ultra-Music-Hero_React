@@ -11,6 +11,7 @@ interface Fields {
 }
 interface Tiles {
   x: number;
+  ref?: any;
   hexNote: number;
   type: string;
   wasHit?: boolean;
@@ -38,8 +39,6 @@ class Game extends React.Component<GameProps> {
     currHexNote: 0
   };
 
-  slidersRef = React.createRef();
-
   compareLetters = [
     ["U", "1"],
     ["L", "2"],
@@ -62,6 +61,7 @@ class Game extends React.Component<GameProps> {
         (e.keyCode >= 49 && e.keyCode <= 52)
       ) {
         let direction: string;
+        let cpoints = this.state.points;
 
         if (e.keyCode === 38) {
           //up
@@ -96,24 +96,27 @@ class Game extends React.Component<GameProps> {
           newTiles = [],
           emptyHit = true;
 
-        //Znaleźć element nietrafiony do odjęcia punktów
-
         for (let tile of tilesCpy) {
           if (tile.type === direction) {
             let fromLeftEdge = 19 - (this.state.currHexNote - tile.hexNote);
 
             if (fromLeftEdge === 4 || fromLeftEdge === 5) {
-              //zapisz state'a dla elementu jako trafioneo
               emptyHit = false;
               if (this.sliders.includes(direction)) {
                 newTiles.push({
                   ...tile,
                   wasHit: true,
+                  werePointsAdded: true,
                   isActivated: true
                 });
-                this.slidersRef.current.activated(tile.x);
+                tile.ref.current.activated(tile.x);
               } else {
-                if (!tile.werePointsAdded) this.addPoints(80);
+                if (!tile.wasHit) this.addPoints(80);
+
+                if (tile.isActivated) {
+                  return this.addPoints(cpoints >= 10 ? -10 : -cpoints);
+                }
+
                 newTiles.push({
                   ...tile,
                   werePointsAdded: true,
@@ -123,10 +126,15 @@ class Game extends React.Component<GameProps> {
               }
               continue;
             }
+            if (this.sliders.includes(tile.type) && tile.isActivated) {
+              emptyHit = false;
+            }
           }
           newTiles.push(tile);
         }
+
         if (!emptyHit) this.setState({ tiles: newTiles });
+        else this.addPoints(cpoints >= 10 ? -10 : -cpoints);
       }
     };
 
@@ -151,16 +159,18 @@ class Game extends React.Component<GameProps> {
 
         for (let tile of tilesCpy) {
           if (tile.type === direction && tile.isActivated === true) {
-            newTiles.push({
-              ...tile,
-              isActivated: false
-            });
             if (this.sliders.includes(direction)) {
-              this.slidersRef.current.disactivated(tile.x);
+              newTiles.push({
+                ...tile,
+                isActivated: false
+              });
+              if (tile.ref.current) tile.ref.current.disactivated(tile.x);
+              continue;
             }
-            break;
           }
+          newTiles.push(tile);
         }
+        this.setState({ tiles: newTiles });
       }
     };
   }
@@ -177,9 +187,9 @@ class Game extends React.Component<GameProps> {
         {
           x: 0,
           hexNote: 0,
-          isActivated: false,
-          length: 5,
-          type: "3"
+          length: 26,
+          type: "3",
+          ref: React.createRef()
         },
         {
           x: 1,
@@ -190,9 +200,21 @@ class Game extends React.Component<GameProps> {
           x: 2,
           hexNote: 9,
           type: "D"
+        },
+        {
+          x: 3,
+          hexNote: 14,
+          length: 8,
+          type: "1",
+          ref: React.createRef()
+        },
+        {
+          x: 4,
+          hexNote: 17,
+          type: "L"
         }
       ],
-      bpm = 20;
+      bpm = 80;
     for (let i = 0; i < 20; i++) {
       fields.push({
         x: i
@@ -202,8 +224,9 @@ class Game extends React.Component<GameProps> {
     for (let tile of tiles) {
       if (this.notes.includes(tile.type)) {
         pointSum += 80;
-      } else pointSum += 100;
+      } else pointSum += Math.floor((150 * tile.length) / bpm) * 2;
     }
+    console.log(pointSum);
 
     this.setState({
       fields,
@@ -257,14 +280,13 @@ class Game extends React.Component<GameProps> {
                             ) : (
                               <Slider
                                 id={tile.x}
-                                length={5}
-                                number={3}
+                                length={tile.length}
+                                handleContent={tile.type}
                                 bpm={this.state.bpm}
-                                type=""
                                 addPoints={(amount: number) => {
                                   this.addPoints(amount);
                                 }}
-                                ref={this.slidersRef}
+                                ref={tile.ref}
                               />
                             )
                           ) : (

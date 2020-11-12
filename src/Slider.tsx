@@ -5,37 +5,32 @@ import Classnames from "classnames";
 import "./slider.scss";
 
 interface SliderProps {
-  parent: App;
   id: number;
-  number: number;
+  handleContent: string;
   length: number;
   bpm: number;
-  type: string;
   addPoints: (pointAmount: number) => void;
 }
 
 interface SliderState {
   id: number;
-  parent?: App;
-  number: number;
+  handleContent: string;
   length: number;
   bpm: number;
-  type: string;
   stopCircle: boolean;
   bar_compl: number;
   bar_compl_interv?: any;
-  bar_gradient: string;
+  bar_animation: string;
   addPoints: (pointAmount: number) => void;
 }
 
 export default class Slider extends React.Component<SliderProps> {
   state: SliderState = {
     id: 0,
-    number: 0,
+    handleContent: "0",
     length: 0,
-    type: "",
     bpm: 0,
-    bar_gradient: `linear-gradient(90deg, rgba(230,230,230,1) 0%, rgba(0,83,99,1) 0%`,
+    bar_animation: ``,
     bar_compl: 0,
     stopCircle: false,
     addPoints: (pointAmount: number) => {}
@@ -45,30 +40,20 @@ export default class Slider extends React.Component<SliderProps> {
 
     this.state.id = props.id;
 
-    this.state.number = props.number;
-    this.state.type = props.type;
+    this.state.handleContent = props.handleContent;
     this.state.bpm = props.bpm;
     this.state.addPoints = props.addPoints;
     this.state.length = props.length;
   }
   activated(id: number) {
     if (this.state.id === id) {
-      let progress = this.state.bar_compl + 1;
       if (!this.state.stopCircle) {
         this.setState({
           stopCircle: true,
-          bar_compl_interv: setInterval(() => {
-            this.setState((prev: SliderState) => ({
-              bar_compl: prev.bar_compl + 1,
-              bar_gradient: `linear-gradient(90deg, rgba(230,230,230,1) ${
-                prev.bar_compl + 1
-              }%, rgba(0,83,99,1) ${prev.bar_compl + 2}%)`
-            }));
-            this.state.addPoints(1);
-            if (this.state.bar_compl === 100) {
-              this.disactivated(this.state.id);
-            }
-          }, ((3 * this.state.length) / (25 * this.state.bpm)) * 1000)
+          bar_animation: `bar_animation ${
+            (15000 * this.state.length) / this.state.bpm
+          }ms linear forwards
+          `
         });
       }
     }
@@ -84,8 +69,8 @@ export default class Slider extends React.Component<SliderProps> {
 
   sliderAnimDuration = () => {
     let bpm = this.state.bpm,
-      sliderLen = this.state.length + 1;
-    return (12 * (25 + sliderLen)) / bpm;
+      sliderLen = this.state.length;
+    return (15 * (20 + sliderLen)) / bpm;
   };
 
   render() {
@@ -94,7 +79,7 @@ export default class Slider extends React.Component<SliderProps> {
         <style
           dangerouslySetInnerHTML={{
             __html: `
-            @keyframes slider_animation {
+            @keyframes slider_animation${this.state.id} {
               from {
                 transform: translateX(0);
               } 
@@ -118,22 +103,46 @@ export default class Slider extends React.Component<SliderProps> {
               slider_handle: true
             })}
             style={{
-              animation: "slider_animation forwards linear",
+              animation: `slider_animation${this.state.id} forwards linear`,
               animationDuration: `${this.sliderAnimDuration()}s`,
               animationPlayState: this.state.stopCircle ? "paused" : "running"
             }}
           >
-            <span>{this.state.number}</span>
+            <img src="" alt={this.state.handleContent} />
           </div>
           <div
             className="slider_bar"
             style={{
-              animation: "slider_animation forwards linear",
+              animation: `slider_animation${this.state.id} forwards linear`,
               animationDuration: `${this.sliderAnimDuration()}s`,
-              width: `calc(${this.state.length} * 5vw)`,
-              background: this.state.bar_gradient
+              width: `calc(${this.state.length} * 5vw)`
             }}
-          ></div>
+          >
+            <div
+              className="slider_bar_content"
+              style={{
+                animation: this.state.bar_animation,
+                animationPlayState: this.state.stopCircle ? "running" : "paused"
+              }}
+              onAnimationStartCapture={() => {
+                let points = 0;
+                this.setState({
+                  bar_compl_interv: setInterval(() => {
+                    points++;
+                    this.state.addPoints(1);
+                    if (points === (150 * this.state.length) / this.state.bpm)
+                      clearInterval(this.state.bar_compl_interv);
+                  }, 100)
+                });
+              }}
+              onAnimationEndCapture={() => {
+                this.setState({
+                  stopCircle: false
+                });
+                clearInterval(this.state.bar_compl_interv);
+              }}
+            ></div>
+          </div>
         </div>
       </>
     );

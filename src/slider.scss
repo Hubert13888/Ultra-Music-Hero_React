@@ -1,3 +1,12 @@
+@keyframes bar_animation {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
 .slider {
   position: absolute;
   left: 200%;
@@ -8,6 +17,7 @@
   display: flex;
   position: relative;
   align-items: center;
+  width: 0;
   height: var(--slider_height);
   background-color: transparent;
   * {
@@ -15,26 +25,38 @@
   }
   .slider_handle {
     position: absolute;
+    display: flex;
     left: -5vw;
     z-index: 1;
-    background-color: transparent;
-    width: var(--slider_height);
+    width: var(--hex_width);
     height: var(--slider_height);
-    display: grid;
-    place-items: center;
-    background-color: transparent;
+    background-color: white;
 
-    span {
+    img {
       position: absolute;
+      left: 0;
+      top: 0;
       display: grid;
       place-items: center;
-      right: 0;
-      height: 10vh;
+      padding: 0;
+      margin: 0;
+      font-size: 8vh;
+      width: inherit;
+      height: inherit;
     }
   }
   .slider_bar {
     position: absolute;
     align-items: center;
-    height: 15px;
+    height: 3vh;
+    background: linear-gradient(90deg, rgba(230,230,230,1) 0%, rgba(0,83,99,1) 0%);
+
+    .slider_bar_content {
+      height: 100%;
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: linear-gradient(90deg, rgba(230,230,230,1) 100%, rgba(0,83,99,1) 100%);
+    }
   }
 }
