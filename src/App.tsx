@@ -1,10 +1,13 @@
 import React from "react";
 import Slider from "./Slider";
 import Classnames from "classnames";
+import Youtube from "react-youtube";
 import "./gameStyles.scss";
 
 interface GameProps {
   notes: string;
+  offset: number;
+  bpm: number;
 }
 interface Fields {
   x: number;
@@ -27,7 +30,8 @@ interface GameState {
   maxPoints: number;
   currHexNote: number;
   interval?: any;
-  bpm?: number;
+  playMusic: boolean;
+  YoutubePlayer?: Youtube;
 }
 
 class Game extends React.Component<GameProps> {
@@ -36,7 +40,8 @@ class Game extends React.Component<GameProps> {
     tiles: [],
     points: 0,
     maxPoints: 0,
-    currHexNote: 0
+    currHexNote: 0,
+    playMusic: false
   };
 
   compareLetters = [
@@ -48,12 +53,20 @@ class Game extends React.Component<GameProps> {
   sliders = ["1", "2", "3", "4"];
   notes = ["U", "D", "L", "R"];
 
+  offset: number;
+  bpm: number;
+  initializedVideo = false;
+  initVideoState = 0;
+
   constructor(props: GameProps) {
     super(props);
     this.state.notes = props.notes;
+    this.bpm = 127;
+    this.offset = 4; //w szesnastkach
+    this.initVideoState = 15; //seconds
   }
   componentDidMount() {
-    this.newGame();
+    this.setBoard();
 
     window.onkeydown = (e) => {
       if (
@@ -181,64 +194,245 @@ class Game extends React.Component<GameProps> {
     }));
   }
 
-  newGame() {
-    let fields = [],
-      tiles: Tiles[] = [
-        {
-          x: 0,
-          hexNote: 0,
-          length: 26,
-          type: "3",
-          ref: React.createRef()
-        },
-        {
-          x: 1,
-          hexNote: 5,
-          type: "L"
-        },
-        {
-          x: 2,
-          hexNote: 9,
-          type: "D"
-        },
-        {
-          x: 3,
-          hexNote: 14,
-          length: 8,
-          type: "1",
-          ref: React.createRef()
-        },
-        {
-          x: 4,
-          hexNote: 17,
-          type: "L"
-        }
-      ],
-      bpm = 80;
+  setBoard() {
+    let fields = [];
     for (let i = 0; i < 20; i++) {
       fields.push({
         x: i
       });
     }
+    this.setState({
+      fields,
+      YoutubePlayer: (
+        <Youtube
+          videoId={"cvvd-9azD1M"}
+          opts={{
+            width: "1",
+            height: "1",
+            playerVars: {
+              autoplay: 0,
+              controls: 0,
+              disablekb: 1,
+              playsinline: 1,
+              showinfo: 0,
+              rel: 0,
+              fs: 0
+            }
+          }}
+          onReady={(e) => {
+            e.target.mute();
+            e.target.seekTo(this.initVideoState);
+          }}
+          onPlay={(e) => {/*
+            if (!this.initializedVideo) {
+              this.initializedVideo = true;
+              e.target.pauseVideo();
+              setTimeout(() => {
+                e.target.unMute();
+                e.target.playVideo();
+              }, (240 / this.bpm) * 1000);
+
+              setTimeout(() => {
+                this.newGame();
+              }, ((15 * this.offset) / this.bpm) * 1000);
+            }*/
+          }}
+        />
+      )
+    });
+  }
+
+  newGame() {
+    let tiles: Tiles[] = [
+      /*{
+        x: 0,
+        hexNote: 0,
+        length: 26,
+        type: "3",
+        ref: React.createRef()
+      },*/
+      {
+        x: 1,
+        hexNote: 0,
+        type: "L"
+      },
+      {
+        x: 2,
+        hexNote: 7,
+        type: "L"
+      },
+      /*{
+        x: 3,
+        hexNote: 14,
+        length: 8,
+        type: "1",
+        ref: React.createRef()
+      },*/
+      {
+        x: 4,
+        hexNote: 15,
+        type: "L"
+      },
+      {
+        x: 5,
+        hexNote: 23,
+        type: "L"
+      },
+      {
+        x: 6,
+        hexNote: 31,
+        type: "L"
+      },
+      {
+        x: 7,
+        hexNote: 39,
+        type: "L"
+      },
+      {
+        x: 8,
+        hexNote: 47,
+        type: "L"
+      },
+      {
+        x: 9,
+        hexNote: 55,
+        type: "L"
+      },
+      {
+        x: 10,
+        hexNote: 63,
+        type: "L"
+      },
+      {
+        x: 11,
+        hexNote: 71,
+        type: "L"
+      },
+      {
+        x: 12,
+        hexNote: 79,
+        type: "L"
+      },
+      {
+        hexNote: 87,
+        type: "L"
+      },
+      {
+        hexNote: 95,
+        type: "L"
+      },
+      /*{
+        x: 3,
+        hexNote: 14,
+        length: 8,
+        type: "1",
+        ref: React.createRef()
+      },*/
+      {
+        hexNote: 103,
+        type: "L"
+      },
+      {
+        hexNote: 111,
+        type: "L"
+      },
+      {
+        hexNote: 119,
+        type: "L"
+      },
+      {
+        hexNote: 127,
+        type: "L"
+      },
+      {
+        hexNote: 135,
+        type: "L"
+      },
+      {
+        hexNote: 143,
+        type: "L"
+      },
+      {
+        hexNote: 151,
+        type: "L"
+      },
+      {
+        hexNote: 159,
+        type: "L"
+      },
+      {
+        hexNote: 167,
+        type: "L"
+      },
+
+      {
+        hexNote: 175,
+        type: "L"
+      },
+      {
+        hexNote: 183,
+        type: "L"
+      },
+      /*{
+        x: 3,
+        hexNote: 14,
+        length: 8,
+        type: "1",
+        ref: React.createRef()
+      },*/
+      {
+        hexNote: 191,
+        type: "L"
+      },
+      {
+        hexNote: 199,
+        type: "L"
+      },
+      {
+        hexNote: 207,
+        type: "L"
+      },
+      {
+        hexNote: 215,
+        type: "L"
+      },
+      {
+        hexNote: 223,
+        type: "L"
+      },
+      {
+        hexNote: 231,
+        type: "L"
+      },
+      {
+        hexNote: 239,
+        type: "L"
+      },
+      {
+        hexNote: 247,
+        type: "L"
+      },
+      {
+        hexNote: 255,
+        type: "L"
+      }
+    ];
     let pointSum = 0;
     for (let tile of tiles) {
       if (this.notes.includes(tile.type)) {
         pointSum += 80;
-      } else pointSum += Math.floor((150 * tile.length) / bpm) * 2;
+      } else pointSum += tile.length * 15;
     }
-    console.log(pointSum);
 
     this.setState({
-      fields,
       tiles,
-      bpm,
       maxPoints: pointSum,
       currHexNote: 0,
       interval: setInterval(() => {
         this.setState((prev: GameState) => ({
           currHexNote: prev.currHexNote + 1
         }));
-      }, (150 / bpm) * 100)
+      }, (150 / this.bpm) * 100)
     });
   }
   render() {
@@ -268,13 +462,24 @@ class Game extends React.Component<GameProps> {
                             this.notes.includes(tile.type) ? (
                               <img
                                 src=""
-                                alt="x"
+                                alt={(() => {
+                                  switch (tile.type) {
+                                    case "U":
+                                      return "^";
+                                    case "L":
+                                      return "<";
+                                    case "R":
+                                      return ">";
+                                    case "D":
+                                      return "v";
+                                  }
+                                })()}
                                 className={Classnames({
                                   tile_animate: true,
                                   hit: tile.wasHit
                                 })}
                                 style={{
-                                  animationDuration: `${300 / this.state.bpm}s`
+                                  animationDuration: `${300 / this.bpm}s`
                                 }}
                               />
                             ) : (
@@ -282,7 +487,7 @@ class Game extends React.Component<GameProps> {
                                 id={tile.x}
                                 length={tile.length}
                                 handleContent={tile.type}
-                                bpm={this.state.bpm}
+                                bpm={this.bpm}
                                 addPoints={(amount: number) => {
                                   this.addPoints(amount);
                                 }}
@@ -306,6 +511,7 @@ class Game extends React.Component<GameProps> {
         <p>
           Punkty: {this.state.points} / {this.state.maxPoints}
         </p>
+        {this.state.YoutubePlayer}
       </>
     );
   }

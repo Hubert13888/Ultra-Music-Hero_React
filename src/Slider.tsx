@@ -21,6 +21,7 @@ interface SliderState {
   bar_compl: number;
   bar_compl_interv?: any;
   bar_animation: string;
+  animationEnd: boolean;
   addPoints: (pointAmount: number) => void;
 }
 
@@ -33,6 +34,7 @@ export default class Slider extends React.Component<SliderProps> {
     bar_animation: ``,
     bar_compl: 0,
     stopCircle: false,
+    animationEnd: false,
     addPoints: (pointAmount: number) => {}
   };
   constructor(props: SliderProps) {
@@ -63,7 +65,7 @@ export default class Slider extends React.Component<SliderProps> {
       this.setState({
         stopCircle: false
       });
-      clearInterval(this.state.bar_compl_interv);
+      if (!this.state.animationEnd) clearInterval(this.state.bar_compl_interv);
     }
   }
 
@@ -125,21 +127,23 @@ export default class Slider extends React.Component<SliderProps> {
                 animationPlayState: this.state.stopCircle ? "running" : "paused"
               }}
               onAnimationStartCapture={() => {
-                let points = 0;
+                let points = 0,
+                  pointsToGet = this.state.length * 15;
                 this.setState({
                   bar_compl_interv: setInterval(() => {
-                    points++;
-                    this.state.addPoints(1);
-                    if (points === (150 * this.state.length) / this.state.bpm)
+                    points += 5;
+                    this.state.addPoints(5);
+                    if (points === pointsToGet)
                       clearInterval(this.state.bar_compl_interv);
-                  }, 100)
+                  }, (5 / this.state.bpm) * 1000)
                 });
               }}
               onAnimationEndCapture={() => {
                 this.setState({
-                  stopCircle: false
+                  stopCircle: false,
+                  animationEnd: true
                 });
-                clearInterval(this.state.bar_compl_interv);
+                //clearInterval(this.state.bar_compl_interv);
               }}
             ></div>
           </div>
