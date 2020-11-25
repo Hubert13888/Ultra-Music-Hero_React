@@ -19,14 +19,15 @@
   align-items: center;
   width: 0;
   height: var(--slider_height);
-  background-color: transparent;
   * {
     display: flex;
+    background-color: blue;
   }
   .slider_handle {
     position: absolute;
     display: flex;
-    left: -5vw;
+    left: -2vw;
+    color: red;
     z-index: 1;
     width: var(--hex_width);
     height: var(--slider_height);

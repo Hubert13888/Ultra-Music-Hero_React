@@ -2,12 +2,38 @@ import React from "react";
 import Slider from "./Slider";
 import Classnames from "classnames";
 import Youtube from "react-youtube";
+import axios from "axios";
 import "./gameStyles.scss";
 
+const sliders = ["1", "2", "3", "4"],
+  notes = ["U", "D", "L", "R"];
+
+interface SongJson {
+  header: {
+    title: string;
+    author: string;
+    videoId: string;
+    bpm: number;
+    videoStartingPoint?: number;
+    startOffset?: number;
+    endOffset?: number;
+    devStartingTact?: number;
+  };
+  notes: Array<Array<Array<string | number> | number | string> | number>;
+}
+
 interface GameProps {
-  notes: string;
-  offset: number;
-  bpm: number;
+  header: {
+    title: string;
+    author: string;
+    videoId: string;
+    bpm: number;
+    videoStartingPoint?: number;
+    startOffset?: number;
+    endOffset?: number;
+  };
+  notes: Tiles[];
+  devStartingHexNote: number;
 }
 interface Fields {
   x: number;
@@ -53,17 +79,29 @@ class Game extends React.Component<GameProps> {
   sliders = ["1", "2", "3", "4"];
   notes = ["U", "D", "L", "R"];
 
-  offset: number;
+  title: string;
+  videoId: string;
+  author: string;
+  startOffset: number;
+  endOffset: number;
   bpm: number;
   initializedVideo = false;
   initVideoState = 0;
+  videoStartingPoint = 0;
+  devStartingHexNote = 0;
+  tiles: Tiles[];
 
   constructor(props: GameProps) {
     super(props);
-    this.state.notes = props.notes;
-    this.bpm = 127;
-    this.offset = 4; //w szesnastkach
-    this.initVideoState = 15; //seconds
+    this.videoId = props.header.videoId;
+    this.tiles = props.notes;
+    this.bpm = props.header.bpm;
+    this.startOffset = props.header.startOffset ? props.header.startOffset : 0;
+    this.endOffset = props.header.endOffset ? props.header.endOffset : 0;
+    this.initVideoState = props.header.videoStartingPoint
+      ? props.header.videoStartingPoint
+      : 0; //seconds
+    this.devStartingHexNote = props.devStartingHexNote;
   }
   componentDidMount() {
     this.setBoard();
@@ -111,15 +149,21 @@ class Game extends React.Component<GameProps> {
 
         for (let tile of tilesCpy) {
           if (tile.type === direction) {
-            let fromLeftEdge = 19 - (this.state.currHexNote - tile.hexNote);
+            let fromLeftEdge =
+              19 -
+              (this.state.currHexNote - tile.hexNote) +
+              (tile.length ? 2 : 0);
 
-            if (fromLeftEdge === 4 || fromLeftEdge === 5) {
+            if (
+              fromLeftEdge === 3 ||
+              fromLeftEdge === 4 ||
+              fromLeftEdge === 5
+            ) {
               emptyHit = false;
               if (this.sliders.includes(direction)) {
                 newTiles.push({
                   ...tile,
                   wasHit: true,
-                  werePointsAdded: true,
                   isActivated: true
                 });
                 tile.ref.current.activated(tile.x);
@@ -132,7 +176,6 @@ class Game extends React.Component<GameProps> {
 
                 newTiles.push({
                   ...tile,
-                  werePointsAdded: true,
                   wasHit: true,
                   isActivated: true
                 });
@@ -146,8 +189,9 @@ class Game extends React.Component<GameProps> {
           newTiles.push(tile);
         }
 
-        if (!emptyHit) this.setState({ tiles: newTiles });
-        else this.addPoints(cpoints >= 10 ? -10 : -cpoints);
+        if (!emptyHit) {
+          this.setState({ tiles: newTiles });
+        } else this.addPoints(cpoints >= 10 ? -10 : -cpoints);
       }
     };
 
@@ -194,6 +238,13 @@ class Game extends React.Component<GameProps> {
     }));
   }
 
+  restart() {
+    console.log("restart");
+  }
+  pause() {
+    console.log("pause");
+  }
+
   setBoard() {
     let fields = [];
     for (let i = 0; i < 20; i++) {
@@ -205,7 +256,7 @@ class Game extends React.Component<GameProps> {
       fields,
       YoutubePlayer: (
         <Youtube
-          videoId={"cvvd-9azD1M"}
+          videoId={this.videoId}
           opts={{
             width: "1",
             height: "1",
@@ -221,9 +272,11 @@ class Game extends React.Component<GameProps> {
           }}
           onReady={(e) => {
             e.target.mute();
-            e.target.seekTo(this.initVideoState);
+            e.target.seekTo(
+              this.initVideoState + (15 * this.devStartingHexNote) / this.bpm
+            );
           }}
-          onPlay={(e) => {/*
+          onPlay={(e) => {
             if (!this.initializedVideo) {
               this.initializedVideo = true;
               e.target.pauseVideo();
@@ -234,8 +287,8 @@ class Game extends React.Component<GameProps> {
 
               setTimeout(() => {
                 this.newGame();
-              }, ((15 * this.offset) / this.bpm) * 1000);
-            }*/
+              }, ((15 * this.startOffset) / this.bpm) * 1000);
+            }
           }}
         />
       )
@@ -243,195 +296,37 @@ class Game extends React.Component<GameProps> {
   }
 
   newGame() {
-    let tiles: Tiles[] = [
-      /*{
-        x: 0,
-        hexNote: 0,
-        length: 26,
-        type: "3",
-        ref: React.createRef()
-      },*/
-      {
-        x: 1,
-        hexNote: 0,
-        type: "L"
-      },
-      {
-        x: 2,
-        hexNote: 7,
-        type: "L"
-      },
-      /*{
-        x: 3,
-        hexNote: 14,
-        length: 8,
-        type: "1",
-        ref: React.createRef()
-      },*/
-      {
-        x: 4,
-        hexNote: 15,
-        type: "L"
-      },
-      {
-        x: 5,
-        hexNote: 23,
-        type: "L"
-      },
-      {
-        x: 6,
-        hexNote: 31,
-        type: "L"
-      },
-      {
-        x: 7,
-        hexNote: 39,
-        type: "L"
-      },
-      {
-        x: 8,
-        hexNote: 47,
-        type: "L"
-      },
-      {
-        x: 9,
-        hexNote: 55,
-        type: "L"
-      },
-      {
-        x: 10,
-        hexNote: 63,
-        type: "L"
-      },
-      {
-        x: 11,
-        hexNote: 71,
-        type: "L"
-      },
-      {
-        x: 12,
-        hexNote: 79,
-        type: "L"
-      },
-      {
-        hexNote: 87,
-        type: "L"
-      },
-      {
-        hexNote: 95,
-        type: "L"
-      },
-      /*{
-        x: 3,
-        hexNote: 14,
-        length: 8,
-        type: "1",
-        ref: React.createRef()
-      },*/
-      {
-        hexNote: 103,
-        type: "L"
-      },
-      {
-        hexNote: 111,
-        type: "L"
-      },
-      {
-        hexNote: 119,
-        type: "L"
-      },
-      {
-        hexNote: 127,
-        type: "L"
-      },
-      {
-        hexNote: 135,
-        type: "L"
-      },
-      {
-        hexNote: 143,
-        type: "L"
-      },
-      {
-        hexNote: 151,
-        type: "L"
-      },
-      {
-        hexNote: 159,
-        type: "L"
-      },
-      {
-        hexNote: 167,
-        type: "L"
-      },
-
-      {
-        hexNote: 175,
-        type: "L"
-      },
-      {
-        hexNote: 183,
-        type: "L"
-      },
-      /*{
-        x: 3,
-        hexNote: 14,
-        length: 8,
-        type: "1",
-        ref: React.createRef()
-      },*/
-      {
-        hexNote: 191,
-        type: "L"
-      },
-      {
-        hexNote: 199,
-        type: "L"
-      },
-      {
-        hexNote: 207,
-        type: "L"
-      },
-      {
-        hexNote: 215,
-        type: "L"
-      },
-      {
-        hexNote: 223,
-        type: "L"
-      },
-      {
-        hexNote: 231,
-        type: "L"
-      },
-      {
-        hexNote: 239,
-        type: "L"
-      },
-      {
-        hexNote: 247,
-        type: "L"
-      },
-      {
-        hexNote: 255,
-        type: "L"
-      }
-    ];
     let pointSum = 0;
-    for (let tile of tiles) {
+    for (let tile of this.tiles) {
       if (this.notes.includes(tile.type)) {
         pointSum += 80;
       } else pointSum += tile.length * 15;
     }
 
     this.setState({
-      tiles,
+      tiles: this.tiles,
       maxPoints: pointSum,
-      currHexNote: 0,
+      currHexNote: this.devStartingHexNote,
       interval: setInterval(() => {
         this.setState((prev: GameState) => ({
           currHexNote: prev.currHexNote + 1
         }));
+        for (let tile of this.state.tiles) {
+          if (
+            this.state.currHexNote - (tile.hexNote + 19) === 0 &&
+            this.devStartingHexNote <= tile.hexNote
+          ) {
+            if (!tile.wasHit)
+              this.addPoints(
+                this.state.points >= 10 ? -10 : -this.state.points
+              );
+            if (tile.x === this.tiles[this.tiles.length - 1].x) {
+              setTimeout(() => {
+                console.log("The End");
+              }, (15000 * this.endOffset) / this.bpm);
+            }
+          }
+        }
       }, (150 / this.bpm) * 100)
     });
   }
@@ -454,34 +349,61 @@ class Game extends React.Component<GameProps> {
                         //up
                         this.state.tiles.map((tile) => {
                           return this.compareLetters[j].includes(tile.type) &&
+                            this.devStartingHexNote <= tile.hexNote &&
                             this.state.currHexNote >= tile.hexNote &&
                             this.state.currHexNote <=
                               tile.hexNote +
                                 21 +
                                 (tile.length ? tile.length : 0) ? (
                             this.notes.includes(tile.type) ? (
-                              <img
-                                src=""
-                                alt={(() => {
-                                  switch (tile.type) {
-                                    case "U":
-                                      return "^";
-                                    case "L":
-                                      return "<";
-                                    case "R":
-                                      return ">";
-                                    case "D":
-                                      return "v";
-                                  }
-                                })()}
-                                className={Classnames({
-                                  tile_animate: true,
-                                  hit: tile.wasHit
-                                })}
-                                style={{
-                                  animationDuration: `${300 / this.bpm}s`
-                                }}
-                              />
+                              <>
+                                <img
+                                  src=""
+                                  alt={(() => {
+                                    switch (tile.type) {
+                                      case "U":
+                                        return "🡅";
+                                      case "L":
+                                        return "🡄";
+                                      case "R":
+                                        return "🡆";
+                                      case "D":
+                                        return "🡇";
+                                    }
+                                  })()}
+                                  className={Classnames({
+                                    tile_animate: true
+                                  })}
+                                  style={{
+                                    animationDuration: `${300 / this.bpm}s`,
+                                    animationPlayState: tile.wasHit
+                                      ? "paused"
+                                      : "running"
+                                  }}
+                                />
+                                <img
+                                  src=""
+                                  alt={(() => {
+                                    switch (tile.type) {
+                                      case "U":
+                                        return "🡅";
+                                      case "L":
+                                        return "🡄";
+                                      case "R":
+                                        return "🡆";
+                                      case "D":
+                                        return "🡇";
+                                    }
+                                  })()}
+                                  className={Classnames({
+                                    tile_animate: true,
+                                    hit: tile.wasHit
+                                  })}
+                                  style={{
+                                    animationDuration: `${300 / this.bpm}s`
+                                  }}
+                                />
+                              </>
                             ) : (
                               <Slider
                                 id={tile.x}
@@ -512,17 +434,223 @@ class Game extends React.Component<GameProps> {
           Punkty: {this.state.points} / {this.state.maxPoints}
         </p>
         {this.state.YoutubePlayer}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            this.restart();
+          }}
+        >
+          Restart
+        </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            this.pause();
+          }}
+        >
+          Pause
+        </button>
       </>
     );
   }
 }
 
 export default class App extends React.Component {
+  state = {
+    game: []
+  };
+
+  songHeaderValidate(song: SongJson) {
+    let errors: string[] = [],
+      alerts: string[] = [];
+
+    try {
+      if (song.header.author === "" || typeof song.header.author !== "string")
+        errors.push("author: No (or wrong) author specified");
+      if (song.header.title === "" || typeof song.header.title !== "string")
+        errors.push("title: No (or wrong) title specified");
+      if (!song.header.bpm || typeof song.header.bpm !== "number")
+        errors.push("bpm: No (or wrong) bpm specified");
+      if (song.header.videoId === "" || typeof song.header.videoId !== "string")
+        errors.push(
+          "videoId: You need to specify Youtube video's id (watch?v=)"
+        );
+      if (song.header.startOffset === undefined)
+        alerts.push(
+          "startOffset: You can specify the starting offset (delay between incoming notes and song start)"
+        );
+      else if (
+        typeof song.header.startOffset !== "number" ||
+        song.header.startOffset < 0
+      )
+        errors.push("startOffset: Wrong offset specified");
+
+      if (song.header.endOffset === undefined)
+        alerts.push(
+          "endOffset: You can specify the ending offset (delay between last note and end of the game)"
+        );
+      else if (
+        typeof song.header.endOffset !== "number" ||
+        song.header.endOffset < 0
+      )
+        errors.push("endOffset: Wrong offset specified");
+
+      if (song.header.videoStartingPoint === undefined)
+        alerts.push(
+          "videoStartingPoint: You can specify the starting video second"
+        );
+      else if (
+        typeof song.header.videoStartingPoint !== "number" ||
+        song.header.videoStartingPoint < 0
+      )
+        errors.push("videoStartingPoint: Wrong video starting time specified");
+
+      if (song.header.devStartingTact === undefined)
+        alerts.push(
+          "devStartingTact: You can specify the starting tact (for easier level creating)"
+        );
+      else if (
+        typeof song.header.devStartingTact !== "number" ||
+        song.header.devStartingTact < 0
+      )
+        errors.push("devStartingTact: Wrong tact number specified");
+    } catch (e) {
+      errors.push("unknown fatal error");
+    }
+
+    return [errors, alerts];
+  }
+  songNotesValidation(song: SongJson) {
+    let errors: string[] = [],
+      alerts: string[] = [],
+      tiles: Tiles[] = [];
+
+    let extraPos = 0,
+      index = 0,
+      iButOnlyNotesInRow = 0;
+
+    for (let [i, row] of song.notes.entries()) {
+      if (Array.isArray(row) || typeof row === "number") {
+        if (Array.isArray(row)) {
+          for (let [j, item] of row.entries()) {
+            if (
+              Array.isArray(item) ||
+              item === 0 ||
+              notes.includes(typeof item === "string" ? item : "xxx")
+            ) {
+              if (Array.isArray(item)) {
+                for (let [k, itemArr] of item.entries()) {
+                  if (
+                    Array.isArray(itemArr) ||
+                    notes.includes(
+                      typeof itemArr === "string" ? itemArr : "xxx"
+                    )
+                  ) {
+                    if (Array.isArray(itemArr)) {
+                      if (
+                        !sliders.includes(itemArr[0].toString()) &&
+                        typeof itemArr[1] !== "number"
+                      ) {
+                        errors.push(
+                          "Wrong slider data in row " +
+                            i +
+                            " at position " +
+                            j +
+                            ".Item number " +
+                            k
+                        );
+                      } else {
+                        tiles.push({
+                          x: index,
+                          hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
+                          type: itemArr[0],
+                          length: itemArr[1],
+                          ref: React.createRef(),
+                          wasHit: false
+                        });
+                        index++;
+                      }
+                    } else {
+                      tiles.push({
+                        x: index,
+                        hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
+                        type: itemArr.toString(),
+                        wasHit: false
+                      });
+                      index++;
+                    }
+                  } else
+                    errors.push(
+                      "Wrong slider data in row " +
+                        i +
+                        " at position " +
+                        j +
+                        ". Item number " +
+                        k
+                    );
+                }
+              } else {
+                if (typeof item !== "number") {
+                  tiles.push({
+                    x: index,
+                    hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
+                    type: item,
+                    wasHit: false
+                  });
+                  index++;
+                }
+              }
+            } else errors.push("Wrong item in row " + i + " at position " + j);
+          }
+          iButOnlyNotesInRow++;
+        } else extraPos += row;
+      } else errors.push("typeError: Wrong type of row number " + i);
+    }
+
+    return [errors, alerts, tiles];
+  }
+
+  countStartingHexNote(devTact: number, notes: SongJson["notes"]) {
+    let amountOfNotNumbers = 0,
+      totalOfNumbers = 0;
+    for (let noteRow of notes) {
+      if (typeof noteRow === "number") {
+        totalOfNumbers += noteRow;
+      } else amountOfNotNumbers++;
+
+      if (amountOfNotNumbers === devTact) break;
+    }
+    return 16 * (devTact - 1) + totalOfNumbers;
+  }
+
+  componentDidMount() {
+    axios.get("/songs/song1.json").then((song: any) => {
+      let headerVal = this.songHeaderValidate(song.data);
+      let notesVal = this.songNotesValidation(song.data);
+      if (!headerVal[0][0] && !notesVal[0][0]) {
+        if (headerVal[1][0] || notesVal[1][0]) {
+          console.log("warnings: ", [...headerVal[1], ...notesVal[0]]);
+        }
+        this.setState({
+          game: [
+            <Game
+              header={song.data.header}
+              notes={notesVal[2]}
+              devStartingHexNote={
+                song.data.header.devStartingTact
+                  ? this.countStartingHexNote(
+                      song.data.header.devStartingTact,
+                      song.data.notes
+                    )
+                  : 0
+              }
+            />
+          ]
+        });
+      } else console.log("errors: ", [...headerVal[0], ...notesVal[0]]);
+    });
+  }
   render() {
-    return (
-      <>
-        <Game notes={"xd"} />
-      </>
-    );
+    return <>{this.state.game}</>;
   }
 }

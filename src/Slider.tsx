@@ -1,5 +1,4 @@
 import React from "react";
-import App from "./App";
 import Classnames from "classnames";
 
 import "./slider.scss";
@@ -48,25 +47,21 @@ export default class Slider extends React.Component<SliderProps> {
     this.state.length = props.length;
   }
   activated(id: number) {
-    if (this.state.id === id) {
-      if (!this.state.stopCircle) {
-        this.setState({
-          stopCircle: true,
-          bar_animation: `bar_animation ${
-            (15000 * this.state.length) / this.state.bpm
-          }ms linear forwards
-          `
-        });
-      }
+    if (!this.state.stopCircle) {
+      this.setState({
+        stopCircle: true,
+        bar_animation: `bar_animation ${
+          (14887 * this.state.length) / this.state.bpm
+        }ms linear forwards
+        `
+      });
     }
   }
   disactivated(id: number) {
-    if (this.state.id === id) {
-      this.setState({
-        stopCircle: false
-      });
-      if (!this.state.animationEnd) clearInterval(this.state.bar_compl_interv);
-    }
+    this.setState({
+      stopCircle: false
+    });
+    if (!this.state.animationEnd) clearInterval(this.state.bar_compl_interv);
   }
 
   sliderAnimDuration = () => {
@@ -143,7 +138,6 @@ export default class Slider extends React.Component<SliderProps> {
                   stopCircle: false,
                   animationEnd: true
                 });
-                //clearInterval(this.state.bar_compl_interv);
               }}
             ></div>
           </div>

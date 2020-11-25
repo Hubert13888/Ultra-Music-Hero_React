@@ -13,7 +13,7 @@ body {
 }
 .game_field {
   width: 5vw;
-  border-right: solid #000 1px;
+  //border-right: solid #000 1px;
 }
 
 @keyframes tile_animation {
@@ -33,11 +33,13 @@ body {
     animation: tile_animation forwards linear; 
   }
   .hit {
-    color: white !important;
+    color: red !important;
     //filter: grayscale(100%);
   }
   img { 
     position: absolute;
+    font-size: 5.5vw;
+    font-weight: bold;
     top: 50%;
     left: 100%;
   }
