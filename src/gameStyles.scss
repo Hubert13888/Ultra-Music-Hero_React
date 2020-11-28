@@ -18,19 +18,21 @@ body {
 
 @keyframes tile_animation {
   from {
-    transform: translate(0, -50%);
+    left: 5vw;
   }
   to {
-    transform: translate(calc(-105vw), -50%);
+    left: -100vw;
   }
 }
 
 .game_stripe {
+  border-bottom: black 2px solid;
   position: relative;
   height: 10vh;
   width: 100%;
   .tile_animate {
-    animation: tile_animation forwards linear; 
+    transform: translateY(-50%);
+    animation: tile_animation forwards linear;
   }
   .hit {
     color: red !important;
@@ -60,4 +62,7 @@ body {
 .stripe3 {
   //background-color: green;
   background-color: yellow;
+}
+.bgc {
+  background-color: green !important;
 }

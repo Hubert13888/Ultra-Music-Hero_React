@@ -9,7 +9,7 @@
 
 .slider {
   position: absolute;
-  left: 200%;
+  left: 75%;
   --slider_height: 10vw;
   --hex_width: 5vw;
   max-height: 10vh;
@@ -21,7 +21,7 @@
   height: var(--slider_height);
   * {
     display: flex;
-    background-color: blue;
+    //background-color: blue;
   }
   .slider_handle {
     position: absolute;
@@ -34,13 +34,13 @@
 
     img {
       position: absolute;
-      left: 0;
+      left: -2vw;
       top: 0;
       display: grid;
       place-items: center;
       padding: 0;
       margin: 0;
-      font-size: 8vh;
+      font-size: 10vh;
       width: inherit;
       height: inherit;
     }

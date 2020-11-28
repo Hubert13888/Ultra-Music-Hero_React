@@ -4,6 +4,7 @@ import Classnames from "classnames";
 import Youtube from "react-youtube";
 import axios from "axios";
 import "./gameStyles.scss";
+import { ExtendedTimer } from "./Timers";
 
 const sliders = ["1", "2", "3", "4"],
   notes = ["U", "D", "L", "R"];
@@ -57,7 +58,13 @@ interface GameState {
   currHexNote: number;
   interval?: any;
   playMusic: boolean;
+  initializedVideo: boolean;
   YoutubePlayer?: Youtube;
+  eYTplayer?: any;
+  paused: boolean;
+
+  newGameTimer?: ExtendedTimer;
+  videoPlayTimer?: ExtendedTimer;
 }
 
 class Game extends React.Component<GameProps> {
@@ -67,7 +74,10 @@ class Game extends React.Component<GameProps> {
     points: 0,
     maxPoints: 0,
     currHexNote: 0,
-    playMusic: false
+    playMusic: false,
+    initializedVideo: false,
+
+    paused: false
   };
 
   compareLetters = [
@@ -85,7 +95,6 @@ class Game extends React.Component<GameProps> {
   startOffset: number;
   endOffset: number;
   bpm: number;
-  initializedVideo = false;
   initVideoState = 0;
   videoStartingPoint = 0;
   devStartingHexNote = 0;
@@ -108,8 +117,9 @@ class Game extends React.Component<GameProps> {
 
     window.onkeydown = (e) => {
       if (
-        (e.keyCode >= 37 && e.keyCode <= 40) ||
-        (e.keyCode >= 49 && e.keyCode <= 52)
+        ((e.keyCode >= 37 && e.keyCode <= 40) ||
+          (e.keyCode >= 49 && e.keyCode <= 52)) &&
+        !this.state.paused
       ) {
         let direction: string;
         let cpoints = this.state.points;
@@ -149,10 +159,7 @@ class Game extends React.Component<GameProps> {
 
         for (let tile of tilesCpy) {
           if (tile.type === direction) {
-            let fromLeftEdge =
-              19 -
-              (this.state.currHexNote - tile.hexNote) +
-              (tile.length ? 2 : 0);
+            let fromLeftEdge = 21 - (this.state.currHexNote - tile.hexNote);
 
             if (
               fromLeftEdge === 3 ||
@@ -196,7 +203,7 @@ class Game extends React.Component<GameProps> {
     };
 
     onkeyup = (e: any) => {
-      if (e.keyCode >= 49 && e.keyCode <= 52) {
+      if (e.keyCode >= 49 && e.keyCode <= 52 && !this.state.paused) {
         let direction: string;
 
         if (e.keyCode === 49) {
@@ -237,12 +244,66 @@ class Game extends React.Component<GameProps> {
       points: prev.points + amount
     }));
   }
+  clearAllIntervals() {
+    let interval_id = window.setInterval(() => {}, 9999);
+    for (let i = 1; i < interval_id; i++) window.clearInterval(i);
+  }
 
   restart() {
-    console.log("restart");
+    if (!this.state.paused) this.pause();
+    this.state.eYTplayer.target.mute();
+    this.state.eYTplayer.target.seekTo(
+      this.initVideoState + (15 * this.devStartingHexNote) / this.bpm
+    );
+    this.clearAllIntervals();
+    this.setState({
+      initializedVideo: false,
+      newGameTimer: null,
+      videoPlayTimer: null
+    });
+    this.state.eYTplayer.target.playVideo();
   }
   pause() {
-    console.log("pause");
+    if (!this.state.videoPlayTimer)
+      return this.setState((prev: GameState) => ({
+        paused: !prev.paused
+      }));
+
+    if (this.state.paused) {
+      if (!this.state.videoPlayTimer.getOff()) {
+        this.state.videoPlayTimer.resume();
+      } else {
+        this.state.eYTplayer.target.unMute();
+        this.state.eYTplayer.target.playVideo();
+      }
+
+      if (!this.state.newGameTimer.getOff()) {
+        this.state.newGameTimer.resume();
+      }
+      this.setState({ interval: this.createGameLoop() });
+    } else {
+      clearInterval(this.state.interval);
+      if (!this.state.videoPlayTimer.getOff()) {
+        this.state.videoPlayTimer.pause();
+      } else {
+        this.state.eYTplayer.target.pauseVideo();
+      }
+
+      if (!this.state.newGameTimer.getOff()) {
+        this.state.newGameTimer.pause();
+      }
+    }
+    this.setState((prev: GameState) => ({
+      paused: !prev.paused
+    }));
+
+    for (let tile of this.state.tiles) {
+      if (sliders.includes(tile.type)) {
+        if (tile.ref.current) {
+          tile.ref.current.stopSlider();
+        }
+      }
+    }
   }
 
   setBoard() {
@@ -258,8 +319,8 @@ class Game extends React.Component<GameProps> {
         <Youtube
           videoId={this.videoId}
           opts={{
-            width: "1",
-            height: "1",
+            width: "200",
+            height: "200",
             playerVars: {
               autoplay: 0,
               controls: 0,
@@ -271,29 +332,69 @@ class Game extends React.Component<GameProps> {
             }
           }}
           onReady={(e) => {
+            this.clearAllIntervals();
             e.target.mute();
             e.target.seekTo(
               this.initVideoState + (15 * this.devStartingHexNote) / this.bpm
             );
+            this.setState({ eYTplayer: e });
           }}
           onPlay={(e) => {
-            if (!this.initializedVideo) {
-              this.initializedVideo = true;
+            if (!this.state.initializedVideo) {
               e.target.pauseVideo();
-              setTimeout(() => {
-                e.target.unMute();
-                e.target.playVideo();
-              }, (240 / this.bpm) * 1000);
-
-              setTimeout(() => {
-                this.newGame();
-              }, ((15 * this.startOffset) / this.bpm) * 1000);
+              this.setState({
+                initializedVideo: true,
+                newGameTimer: new ExtendedTimer(() => {
+                  this.newGame();
+                  this.state.newGameTimer.setOff();
+                }, ((15 * this.startOffset) / this.bpm) * 1000),
+                videoPlayTimer: new ExtendedTimer(() => {
+                  if (!this.state.paused) {
+                    e.target.unMute();
+                    e.target.playVideo();
+                    this.state.videoPlayTimer.setOff();
+                    this.setState({
+                      gameStarted: true
+                    });
+                  }
+                }, (240 / this.bpm) * 1000)
+              });
+            } else if (this.state.paused) {
+              this.pause();
+              console.log(e.target, 45);
+            }
+          }}
+          onPause={(e) => {
+            if (this.state.gameStarted && !this.state.paused) {
+              this.pause();
             }
           }}
         />
       )
     });
   }
+
+  createGameLoop = () => {
+    return setInterval(() => {
+      this.setState((prev: GameState) => ({
+        currHexNote: prev.currHexNote + 1
+      }));
+      for (let tile of this.state.tiles) {
+        if (
+          this.state.currHexNote - (tile.hexNote + 19) === 0 &&
+          this.devStartingHexNote <= tile.hexNote
+        ) {
+          if (!tile.wasHit)
+            this.addPoints(this.state.points >= 10 ? -10 : -this.state.points);
+          if (tile.x === this.tiles[this.tiles.length - 1].x) {
+            setTimeout(() => {
+              console.log("The End");
+            }, (15000 * this.endOffset) / this.bpm);
+          }
+        }
+      }
+    }, (150 / this.bpm) * 100);
+  };
 
   newGame() {
     let pointSum = 0;
@@ -307,27 +408,9 @@ class Game extends React.Component<GameProps> {
       tiles: this.tiles,
       maxPoints: pointSum,
       currHexNote: this.devStartingHexNote,
-      interval: setInterval(() => {
-        this.setState((prev: GameState) => ({
-          currHexNote: prev.currHexNote + 1
-        }));
-        for (let tile of this.state.tiles) {
-          if (
-            this.state.currHexNote - (tile.hexNote + 19) === 0 &&
-            this.devStartingHexNote <= tile.hexNote
-          ) {
-            if (!tile.wasHit)
-              this.addPoints(
-                this.state.points >= 10 ? -10 : -this.state.points
-              );
-            if (tile.x === this.tiles[this.tiles.length - 1].x) {
-              setTimeout(() => {
-                console.log("The End");
-              }, (15000 * this.endOffset) / this.bpm);
-            }
-          }
-        }
-      }, (150 / this.bpm) * 100)
+      paused: false,
+      points: 0,
+      interval: this.createGameLoop()
     });
   }
   render() {
@@ -336,7 +419,7 @@ class Game extends React.Component<GameProps> {
         <div className="game">
           {this.state.fields.map((field, i) => {
             return (
-              <div className="game_field">
+              <div className={"game_field " + (i === 3 ? "bgc" : "")}>
                 {[0, 1, 2, 3].map((j) => {
                   return (
                     <div
@@ -350,11 +433,11 @@ class Game extends React.Component<GameProps> {
                         this.state.tiles.map((tile) => {
                           return this.compareLetters[j].includes(tile.type) &&
                             this.devStartingHexNote <= tile.hexNote &&
-                            this.state.currHexNote >= tile.hexNote &&
+                            this.state.currHexNote > tile.hexNote &&
                             this.state.currHexNote <=
                               tile.hexNote +
                                 21 +
-                                (tile.length ? tile.length : 0) ? (
+                                (tile.length ? tile.length * 2 : 0) ? (
                             this.notes.includes(tile.type) ? (
                               <>
                                 <img
@@ -375,10 +458,11 @@ class Game extends React.Component<GameProps> {
                                     tile_animate: true
                                   })}
                                   style={{
-                                    animationDuration: `${300 / this.bpm}s`,
-                                    animationPlayState: tile.wasHit
-                                      ? "paused"
-                                      : "running"
+                                    animationDuration: `${315 / this.bpm}s`,
+                                    animationPlayState:
+                                      tile.wasHit || this.state.paused
+                                        ? "paused"
+                                        : "running"
                                   }}
                                 />
                                 <img
@@ -400,18 +484,21 @@ class Game extends React.Component<GameProps> {
                                     hit: tile.wasHit
                                   })}
                                   style={{
-                                    animationDuration: `${300 / this.bpm}s`
+                                    animationDuration: `${315 / this.bpm}s`,
+                                    animationPlayState: this.state.paused
+                                      ? "paused"
+                                      : "running"
                                   }}
                                 />
                               </>
                             ) : (
                               <Slider
                                 id={tile.x}
-                                length={tile.length}
                                 handleContent={tile.type}
+                                length={tile.length}
                                 bpm={this.bpm}
-                                addPoints={(amount: number) => {
-                                  this.addPoints(amount);
+                                addPoints={(pointAmount: number) => {
+                                  this.addPoints(pointAmount);
                                 }}
                                 ref={tile.ref}
                               />
@@ -433,7 +520,6 @@ class Game extends React.Component<GameProps> {
         <p>
           Punkty: {this.state.points} / {this.state.maxPoints}
         </p>
-        {this.state.YoutubePlayer}
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -450,6 +536,7 @@ class Game extends React.Component<GameProps> {
         >
           Pause
         </button>
+        {this.state.YoutubePlayer}
       </>
     );
   }

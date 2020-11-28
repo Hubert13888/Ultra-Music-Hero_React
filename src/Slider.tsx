@@ -18,6 +18,7 @@ interface SliderState {
   bpm: number;
   stopCircle: boolean;
   bar_compl: number;
+  paused: boolean;
   bar_compl_interv?: any;
   bar_animation: string;
   animationEnd: boolean;
@@ -32,6 +33,7 @@ export default class Slider extends React.Component<SliderProps> {
     bpm: 0,
     bar_animation: ``,
     bar_compl: 0,
+    paused: false,
     stopCircle: false,
     animationEnd: false,
     addPoints: (pointAmount: number) => {}
@@ -51,7 +53,7 @@ export default class Slider extends React.Component<SliderProps> {
       this.setState({
         stopCircle: true,
         bar_animation: `bar_animation ${
-          (14887 * this.state.length) / this.state.bpm
+          (15000 * this.state.length) / this.state.bpm
         }ms linear forwards
         `
       });
@@ -63,11 +65,16 @@ export default class Slider extends React.Component<SliderProps> {
     });
     if (!this.state.animationEnd) clearInterval(this.state.bar_compl_interv);
   }
+  stopSlider() {
+    this.setState((prev: SliderState) => ({
+      paused: !prev.paused
+    }));
+  }
 
   sliderAnimDuration = () => {
     let bpm = this.state.bpm,
       sliderLen = this.state.length;
-    return (15 * (20 + sliderLen)) / bpm;
+    return (15 * (21 + sliderLen + 1)) / bpm;
   };
 
   render() {
@@ -78,12 +85,10 @@ export default class Slider extends React.Component<SliderProps> {
             __html: `
             @keyframes slider_animation${this.state.id} {
               from {
-                transform: translateX(0);
+                left: 5vw;
               } 
               to {
-                transform: translateX(calc(-100vw - ${
-                  this.state.length + 1
-                } * 5vw));
+                left: calc(-100vw - ${this.state.length + 1} * 5vw);
               }
             }
           `
@@ -102,7 +107,10 @@ export default class Slider extends React.Component<SliderProps> {
             style={{
               animation: `slider_animation${this.state.id} forwards linear`,
               animationDuration: `${this.sliderAnimDuration()}s`,
-              animationPlayState: this.state.stopCircle ? "paused" : "running"
+              animationPlayState:
+                this.state.stopCircle || this.state.paused
+                  ? "paused"
+                  : "running"
             }}
           >
             <img src="" alt={this.state.handleContent} />
@@ -112,6 +120,7 @@ export default class Slider extends React.Component<SliderProps> {
             style={{
               animation: `slider_animation${this.state.id} forwards linear`,
               animationDuration: `${this.sliderAnimDuration()}s`,
+              animationPlayState: this.state.paused ? "paused" : "running",
               width: `calc(${this.state.length} * 5vw)`
             }}
           >
@@ -119,7 +128,10 @@ export default class Slider extends React.Component<SliderProps> {
               className="slider_bar_content"
               style={{
                 animation: this.state.bar_animation,
-                animationPlayState: this.state.stopCircle ? "running" : "paused"
+                animationPlayState:
+                  this.state.stopCircle && !this.state.paused
+                    ? "running"
+                    : "paused"
               }}
               onAnimationStartCapture={() => {
                 let points = 0,
