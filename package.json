@@ -8,10 +8,12 @@
     "@types/node": "14.14.6",
     "@types/react": "16.9.55",
     "@types/react-dom": "16.9.9",
+    "accurate-interval": "1.0.9",
     "axios": "0.21.0",
     "classnames": "2.2.6",
     "react": "17.0.0",
     "react-dom": "17.0.0",
+    "react-player": "2.7.0",
     "react-scripts": "3.4.3",
     "react-youtube": "7.13.0",
     "sass": "1.28.0",
@@ -27,5 +29,10 @@
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"
   },
-  "browserslist": [">0.2%", "not dead", "not ie <= 11", "not op_mini all"]
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 }

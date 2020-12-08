@@ -13,15 +13,24 @@ body {
 }
 .game_field {
   width: 5vw;
-  //border-right: solid #000 1px;
 }
 
 @keyframes tile_animation {
   from {
-    left: 5vw;
+    transform: translate(0vw, -50%);
   }
   to {
-    left: -100vw;
+    transform: translate(-105vw, -50%);
+  }
+}
+
+@keyframes tile_fadeOut {
+  from {
+    opacity: 100%;
+  }
+  to {
+    opacity: 0%;
+    font-size: calc(175%);
   }
 }
 
@@ -34,13 +43,17 @@ body {
     transform: translateY(-50%);
     animation: tile_animation forwards linear;
   }
+  .tile_animate2 {
+    transform: translateY(-50%);
+    animation: tile_animation2 forwards linear;
+  }
   .hit {
     color: red !important;
     //filter: grayscale(100%);
   }
   img { 
     position: absolute;
-    font-size: 5.5vw;
+    font-size: calc(min(5.5vw, 9vh));
     font-weight: bold;
     top: 50%;
     left: 100%;
@@ -65,4 +78,9 @@ body {
 }
 .bgc {
   background-color: green !important;
+}
+.note_fadeOut {
+  opacity: 0%;
+  scale: 1.5;
+  transition: opacity 150ms linear, scale 1500ms linear;
 }

@@ -1,9 +1,9 @@
 @keyframes bar_animation {
   from {
-    width: 0%;
+    transform: translateX(0);
   }
   to {
-    width: 100%;
+    transform: translateX(100%);
   }
 }
 
@@ -21,7 +21,6 @@
   height: var(--slider_height);
   * {
     display: flex;
-    //background-color: blue;
   }
   .slider_handle {
     position: absolute;
@@ -40,7 +39,7 @@
       place-items: center;
       padding: 0;
       margin: 0;
-      font-size: 10vh;
+      font-size: calc(min(7vw, 9vh)); 
       width: inherit;
       height: inherit;
     }
@@ -48,14 +47,17 @@
   .slider_bar {
     position: absolute;
     align-items: center;
-    height: 3vh;
+    height: 1.5vw;
+    overflow: hidden;
     background: linear-gradient(90deg, rgba(230,230,230,1) 0%, rgba(0,83,99,1) 0%);
 
     .slider_bar_content {
       height: 100%;
+      width: 100%;
       position: absolute;
-      left: 0;
+      left: -100%;
       top: 0;
+      transform: translateX(0);
       background: linear-gradient(90deg, rgba(230,230,230,1) 100%, rgba(0,83,99,1) 100%);
     }
   }

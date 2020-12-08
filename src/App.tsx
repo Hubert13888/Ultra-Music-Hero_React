@@ -1,10 +1,11 @@
 import React from "react";
 import Slider from "./Slider";
 import Classnames from "classnames";
-import Youtube from "react-youtube";
+import Youtube from "react-player/lazy";
 import axios from "axios";
 import "./gameStyles.scss";
 import { ExtendedTimer } from "./Timers";
+import accurateInterval from "accurate-interval";
 
 const sliders = ["1", "2", "3", "4"],
   notes = ["U", "D", "L", "R"];
@@ -50,6 +51,8 @@ interface Tiles {
 }
 
 interface GameState {
+  gameStarted: boolean;
+  muted: boolean;
   notes?: string;
   fields: Fields[];
   tiles: Tiles[];
@@ -59,9 +62,11 @@ interface GameState {
   interval?: any;
   playMusic: boolean;
   initializedVideo: boolean;
-  YoutubePlayer?: Youtube;
-  eYTplayer?: any;
+  playerRef?: any;
+  restartTimer?: any;
+  afterUnpause?: boolean;
   paused: boolean;
+  pausedTiles: boolean;
 
   newGameTimer?: ExtendedTimer;
   videoPlayTimer?: ExtendedTimer;
@@ -76,8 +81,12 @@ class Game extends React.Component<GameProps> {
     currHexNote: 0,
     playMusic: false,
     initializedVideo: false,
+    playerRef: React.createRef(),
 
-    paused: false
+    paused: true,
+    pausedTiles: false,
+    muted: true,
+    afterUnpause: false
   };
 
   compareLetters = [
@@ -246,22 +255,29 @@ class Game extends React.Component<GameProps> {
   }
   clearAllIntervals() {
     let interval_id = window.setInterval(() => {}, 9999);
-    for (let i = 1; i < interval_id; i++) window.clearInterval(i);
+    console.log(interval_id);
+    for (let i = interval_id - 15; i < interval_id; i++)
+      window.clearInterval(i);
   }
 
   restart() {
-    if (!this.state.paused) this.pause();
-    this.state.eYTplayer.target.mute();
-    this.state.eYTplayer.target.seekTo(
+    this.state.playerRef.current.seekTo(
       this.initVideoState + (15 * this.devStartingHexNote) / this.bpm
     );
+    if (!this.state.paused) this.pause();
     this.clearAllIntervals();
     this.setState({
+      tiles: [],
+      muted: true,
+      paused: true,
       initializedVideo: false,
       newGameTimer: null,
-      videoPlayTimer: null
+      videoPlayTimer: null,
+      gameStarted: false
     });
-    this.state.eYTplayer.target.playVideo();
+    this.setState({
+      paused: false
+    });
   }
   pause() {
     if (!this.state.videoPlayTimer)
@@ -272,9 +288,6 @@ class Game extends React.Component<GameProps> {
     if (this.state.paused) {
       if (!this.state.videoPlayTimer.getOff()) {
         this.state.videoPlayTimer.resume();
-      } else {
-        this.state.eYTplayer.target.unMute();
-        this.state.eYTplayer.target.playVideo();
       }
 
       if (!this.state.newGameTimer.getOff()) {
@@ -282,11 +295,9 @@ class Game extends React.Component<GameProps> {
       }
       this.setState({ interval: this.createGameLoop() });
     } else {
-      clearInterval(this.state.interval);
+      this.state.interval.clear();
       if (!this.state.videoPlayTimer.getOff()) {
         this.state.videoPlayTimer.pause();
-      } else {
-        this.state.eYTplayer.target.pauseVideo();
       }
 
       if (!this.state.newGameTimer.getOff()) {
@@ -315,85 +326,37 @@ class Game extends React.Component<GameProps> {
     }
     this.setState({
       fields,
-      YoutubePlayer: (
-        <Youtube
-          videoId={this.videoId}
-          opts={{
-            width: "200",
-            height: "200",
-            playerVars: {
-              autoplay: 0,
-              controls: 0,
-              disablekb: 1,
-              playsinline: 1,
-              showinfo: 0,
-              rel: 0,
-              fs: 0
-            }
-          }}
-          onReady={(e) => {
-            this.clearAllIntervals();
-            e.target.mute();
-            e.target.seekTo(
-              this.initVideoState + (15 * this.devStartingHexNote) / this.bpm
-            );
-            this.setState({ eYTplayer: e });
-          }}
-          onPlay={(e) => {
-            if (!this.state.initializedVideo) {
-              e.target.pauseVideo();
-              this.setState({
-                initializedVideo: true,
-                newGameTimer: new ExtendedTimer(() => {
-                  this.newGame();
-                  this.state.newGameTimer.setOff();
-                }, ((15 * this.startOffset) / this.bpm) * 1000),
-                videoPlayTimer: new ExtendedTimer(() => {
-                  if (!this.state.paused) {
-                    e.target.unMute();
-                    e.target.playVideo();
-                    this.state.videoPlayTimer.setOff();
-                    this.setState({
-                      gameStarted: true
-                    });
-                  }
-                }, (240 / this.bpm) * 1000)
-              });
-            } else if (this.state.paused) {
-              this.pause();
-              console.log(e.target, 45);
-            }
-          }}
-          onPause={(e) => {
-            if (this.state.gameStarted && !this.state.paused) {
-              this.pause();
-            }
-          }}
-        />
-      )
+      //this.videoId}
+      YoutubePlayer: <></>
     });
   }
 
   createGameLoop = () => {
-    return setInterval(() => {
-      this.setState((prev: GameState) => ({
-        currHexNote: prev.currHexNote + 1
-      }));
-      for (let tile of this.state.tiles) {
-        if (
-          this.state.currHexNote - (tile.hexNote + 19) === 0 &&
-          this.devStartingHexNote <= tile.hexNote
-        ) {
-          if (!tile.wasHit)
-            this.addPoints(this.state.points >= 10 ? -10 : -this.state.points);
-          if (tile.x === this.tiles[this.tiles.length - 1].x) {
-            setTimeout(() => {
-              console.log("The End");
-            }, (15000 * this.endOffset) / this.bpm);
+    return accurateInterval(
+      () => {
+        this.setState((prev: GameState) => ({
+          currHexNote: prev.currHexNote + 1
+        }));
+        for (let tile of this.state.tiles) {
+          if (
+            this.state.currHexNote - (tile.hexNote + 19) === 0 &&
+            this.devStartingHexNote <= tile.hexNote
+          ) {
+            /*if (!tile.wasHit)
+              this.addPoints(
+                this.state.points >= 10 ? -10 : -this.state.points
+              );*/
+            if (tile.x === this.tiles[this.tiles.length - 1].x) {
+              setTimeout(() => {
+                console.log("The End");
+              }, (15000 * this.endOffset) / this.bpm);
+            }
           }
         }
-      }
-    }, (150 / this.bpm) * 100);
+      },
+      (150 / this.bpm) * 100,
+      {}
+    );
   };
 
   newGame() {
@@ -437,7 +400,7 @@ class Game extends React.Component<GameProps> {
                             this.state.currHexNote <=
                               tile.hexNote +
                                 21 +
-                                (tile.length ? tile.length * 2 : 0) ? (
+                                (tile.length ? tile.length * 2 : 2) ? (
                             this.notes.includes(tile.type) ? (
                               <>
                                 <img
@@ -454,15 +417,22 @@ class Game extends React.Component<GameProps> {
                                         return "🡇";
                                     }
                                   })()}
-                                  className={Classnames({
-                                    tile_animate: true
-                                  })}
                                   style={{
-                                    animationDuration: `${315 / this.bpm}s`,
-                                    animationPlayState:
-                                      tile.wasHit || this.state.paused
+                                    animation: `tile_animation ${
+                                      315 / this.bpm
+                                    }s forwards linear ${
+                                      tile.wasHit ||
+                                      this.state.paused ||
+                                      this.state.pausedTiles
                                         ? "paused"
-                                        : "running"
+                                        : ""
+                                    } ${
+                                      tile.wasHit
+                                        ? `, tile_fadeOut forwards ${
+                                            (15 * 5) / this.bpm
+                                          }s`
+                                        : ""
+                                    }`
                                   }}
                                 />
                                 <img
@@ -485,9 +455,11 @@ class Game extends React.Component<GameProps> {
                                   })}
                                   style={{
                                     animationDuration: `${315 / this.bpm}s`,
-                                    animationPlayState: this.state.paused
-                                      ? "paused"
-                                      : "running"
+                                    animationPlayState:
+                                      this.state.paused ||
+                                      this.state.pausedTiles
+                                        ? "paused"
+                                        : ""
                                   }}
                                 />
                               </>
@@ -536,7 +508,76 @@ class Game extends React.Component<GameProps> {
         >
           Pause
         </button>
-        {this.state.YoutubePlayer}
+
+        <Youtube
+          url={"https://www.youtube.com/watch?v=cvvd-9azD1M"}
+          width="200px"
+          height="200px"
+          playing={!this.state.paused}
+          muted={this.state.muted}
+          ref={this.state.playerRef}
+          config={{
+            youtube: {
+              playerVars: {
+                autoplay: 1,
+                controls: 0,
+                disablekb: 1,
+                showinfo: 0,
+                rel: 0,
+                fs: 0,
+                start:
+                  this.initVideoState +
+                  (15 * this.devStartingHexNote) / this.bpm
+              }
+            }
+          }}
+          onBufferEnd={() => {
+            if (!this.state.initializedVideo) {
+              this.setState({
+                initializedVideo: true,
+                newGameTimer: new ExtendedTimer(() => {
+                  this.newGame();
+                  this.state.newGameTimer.setOff();
+                }, ((15 * this.startOffset) / this.bpm) * 1000),
+                videoPlayTimer: new ExtendedTimer(() => {
+                  if (!this.state.paused) {
+                    this.state.videoPlayTimer.setOff();
+                    this.setState({
+                      gameStarted: true,
+                      paused: 0,
+                      muted: 0
+                    });
+                  }
+                }, (240 / this.bpm) * 1000)
+              });
+            } else if (this.state.paused) {
+              this.pause();
+              this.setState({
+                afterUnpause: true,
+                pausedTiles: false,
+                restartTimer: setTimeout(() => {
+                  this.pause();
+                }, 50)
+              });
+            }
+          }}
+          onPause={() => {
+            if (this.state.gameStarted && !this.state.paused) {
+              this.pause();
+            }
+            if (this.state.afterUnpause) {
+              this.pause();
+            }
+          }}
+          onProgress={() => {
+            if (this.state.afterUnpause) {
+              clearTimeout(this.state.restartTimer);
+              this.setState({
+                afterUnpause: false
+              });
+            }
+          }}
+        />
       </>
     );
   }

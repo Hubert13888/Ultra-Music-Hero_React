@@ -1,5 +1,6 @@
 import React from "react";
 import Classnames from "classnames";
+import accurateInterval from "accurate-interval";
 
 import "./slider.scss";
 
@@ -63,7 +64,7 @@ export default class Slider extends React.Component<SliderProps> {
     this.setState({
       stopCircle: false
     });
-    if (!this.state.animationEnd) clearInterval(this.state.bar_compl_interv);
+    if (!this.state.animationEnd) this.state.bar_compl_interv.clear();
   }
   stopSlider() {
     this.setState((prev: SliderState) => ({
@@ -85,10 +86,12 @@ export default class Slider extends React.Component<SliderProps> {
             __html: `
             @keyframes slider_animation${this.state.id} {
               from {
-                left: 5vw;
+                transform: translateX(5vw);
               } 
               to {
-                left: calc(-100vw - ${this.state.length + 1} * 5vw);
+                transform: translateX(calc(-100vw - ${
+                  this.state.length + 1
+                } * 5vw));
               }
             }
           `
@@ -137,12 +140,16 @@ export default class Slider extends React.Component<SliderProps> {
                 let points = 0,
                   pointsToGet = this.state.length * 15;
                 this.setState({
-                  bar_compl_interv: setInterval(() => {
-                    points += 5;
-                    this.state.addPoints(5);
-                    if (points === pointsToGet)
-                      clearInterval(this.state.bar_compl_interv);
-                  }, (5 / this.state.bpm) * 1000)
+                  bar_compl_interv: accurateInterval(
+                    () => {
+                      points += 15;
+                      this.state.addPoints(5);
+                      if (points === pointsToGet)
+                        this.state.bar_compl_interv.clear();
+                    },
+                    (15 / this.state.bpm) * 1000,
+                    {}
+                  )
                 });
               }}
               onAnimationEndCapture={() => {
