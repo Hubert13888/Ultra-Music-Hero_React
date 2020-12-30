@@ -10,6 +10,7 @@ import accurateInterval from "accurate-interval";
 const sliders = ["1", "2", "3", "4"],
   notes = ["U", "D", "L", "R"];
 
+/* Błąd przy odpauzowaniu wideo */
 interface SongJson {
   header: {
     title: string;
@@ -20,6 +21,7 @@ interface SongJson {
     startOffset?: number;
     endOffset?: number;
     devStartingTact?: number;
+    videoStartingOffset?: number;
   };
   notes: Array<Array<Array<string | number> | number | string> | number>;
 }
@@ -31,6 +33,7 @@ interface GameProps {
     videoId: string;
     bpm: number;
     videoStartingPoint?: number;
+    videoStartingOffset?: number;
     startOffset?: number;
     endOffset?: number;
   };
@@ -68,8 +71,21 @@ interface GameState {
   paused: boolean;
   pausedTiles: boolean;
 
+  gameSettings?: GameSettings;
+
   newGameTimer?: ExtendedTimer;
   videoPlayTimer?: ExtendedTimer;
+}
+
+interface GameSettings {
+  videoId: string;
+  tiles: Tiles[];
+  bpm: number;
+  startOffset: number;
+  endOffset: number;
+  initVideoState: number;
+  devStartingHexNote: number;
+  videoStartingOffset: number;
 }
 
 class Game extends React.Component<GameProps> {
@@ -81,10 +97,11 @@ class Game extends React.Component<GameProps> {
     currHexNote: 0,
     playMusic: false,
     initializedVideo: false,
+    gameStarted: false,
     playerRef: React.createRef(),
 
-    paused: true,
-    pausedTiles: false,
+    paused: false,
+    pausedTiles: true,
     muted: true,
     afterUnpause: false
   };
@@ -98,37 +115,30 @@ class Game extends React.Component<GameProps> {
   sliders = ["1", "2", "3", "4"];
   notes = ["U", "D", "L", "R"];
 
-  title: string;
-  videoId: string;
-  author: string;
-  startOffset: number;
-  endOffset: number;
-  bpm: number;
-  initVideoState = 0;
-  videoStartingPoint = 0;
-  devStartingHexNote = 0;
-  tiles: Tiles[];
-
   constructor(props: GameProps) {
     super(props);
-    this.videoId = props.header.videoId;
-    this.tiles = props.notes;
-    this.bpm = props.header.bpm;
-    this.startOffset = props.header.startOffset ? props.header.startOffset : 0;
-    this.endOffset = props.header.endOffset ? props.header.endOffset : 0;
-    this.initVideoState = props.header.videoStartingPoint
-      ? props.header.videoStartingPoint
-      : 0; //seconds
-    this.devStartingHexNote = props.devStartingHexNote;
+
+    this.state.gameSettings = {
+      videoId: props.header.videoId,
+      tiles: props.notes,
+      bpm: props.header.bpm,
+      startOffset: props.header.startOffset ? props.header.startOffset : 0,
+      endOffset: props.header.endOffset ? props.header.endOffset : 0,
+      initVideoState: props.header.videoStartingPoint
+        ? props.header.videoStartingPoint
+        : 0,
+      devStartingHexNote: props.devStartingHexNote,
+      videoStartingOffset: props.header.videoStartingOffset
+    };
   }
   componentDidMount() {
     this.setBoard();
 
-    window.onkeydown = (e) => {
+    window.onkeydown = async (e) => {
       if (
         ((e.keyCode >= 37 && e.keyCode <= 40) ||
           (e.keyCode >= 49 && e.keyCode <= 52)) &&
-        !this.state.paused
+        !this.state.pausedTiles
       ) {
         let direction: string;
         let cpoints = this.state.points;
@@ -169,11 +179,11 @@ class Game extends React.Component<GameProps> {
         for (let tile of tilesCpy) {
           if (tile.type === direction) {
             let fromLeftEdge = 21 - (this.state.currHexNote - tile.hexNote);
-
             if (
-              fromLeftEdge === 3 ||
-              fromLeftEdge === 4 ||
-              fromLeftEdge === 5
+              (fromLeftEdge === 3 ||
+                fromLeftEdge === 4 ||
+                fromLeftEdge === 5) &&
+              emptyHit
             ) {
               emptyHit = false;
               if (this.sliders.includes(direction)) {
@@ -211,8 +221,8 @@ class Game extends React.Component<GameProps> {
       }
     };
 
-    onkeyup = (e: any) => {
-      if (e.keyCode >= 49 && e.keyCode <= 52 && !this.state.paused) {
+    onkeyup = async (e: any) => {
+      if (e.keyCode >= 49 && e.keyCode <= 52 && !this.state.paused && false) {
         let direction: string;
 
         if (e.keyCode === 49) {
@@ -255,14 +265,43 @@ class Game extends React.Component<GameProps> {
   }
   clearAllIntervals() {
     let interval_id = window.setInterval(() => {}, 9999);
-    console.log(interval_id);
-    for (let i = interval_id - 15; i < interval_id; i++)
+    for (let i = interval_id - 30; i < interval_id; i++)
       window.clearInterval(i);
+  }
+
+  refreshNotes(data: SongJson) {
+    let headerVal = songHeaderValidate(data);
+    let notesVal = songNotesValidation(data);
+    if (!headerVal[0][0] && !notesVal[0][0]) {
+      if (headerVal[1][0] || notesVal[1][0]) {
+        console.log("warnings: ", [...headerVal[1], ...notesVal[0]]);
+      }
+
+      this.setState((prev: GameState) => ({
+        gameSettings: {
+          ...prev,
+          videoId: data.header.videoId,
+          tiles: [...notesVal[2]],
+          bpm: data.header.bpm,
+          startOffset: data.header.startOffset ? data.header.startOffset : 0,
+          endOffset: data.header.endOffset ? data.header.endOffset : 0,
+          initVideoState: data.header.videoStartingPoint
+            ? data.header.videoStartingPoint
+            : 0,
+          devStartingHexNote: data.header.devStartingTact
+            ? countStartingHexNote(data.header.devStartingTact, data.notes)
+            : 0,
+          videoStartingOffset: data.header.videoStartingOffset
+        }
+      }));
+    } else console.log("errors: ", [...headerVal[0], ...notesVal[0]]);
   }
 
   restart() {
     this.state.playerRef.current.seekTo(
-      this.initVideoState + (15 * this.devStartingHexNote) / this.bpm
+      this.state.gameSettings.initVideoState +
+        (15 * this.state.gameSettings.devStartingHexNote) /
+          this.state.gameSettings.bpm
     );
     if (!this.state.paused) this.pause();
     this.clearAllIntervals();
@@ -280,32 +319,42 @@ class Game extends React.Component<GameProps> {
     });
   }
   pause() {
-    if (!this.state.videoPlayTimer)
+    if (!this.state.gameStarted) {
+      if (this.state.pausedTiles) return this.restart();
+      else this.state.interval.clear();
+
+      if (!this.state.videoPlayTimer.getOff()) {
+        if (this.state.videoPlayTimer.pos == "run")
+          this.state.videoPlayTimer.pause();
+      }
+      if (!this.state.newGameTimer.getOff()) {
+        if (this.state.newGameTimer.pos == "run")
+          this.state.newGameTimer.pause();
+      }
+
+      for (let tile of this.state.tiles) {
+        if (sliders.includes(tile.type)) {
+          if (tile.ref.current) {
+            tile.ref.current.stopSlider();
+          }
+        }
+      }
+
       return this.setState((prev: GameState) => ({
-        paused: !prev.paused
+        paused: !prev.pausedTiles,
+        pausedTiles: !prev.pausedTiles
       }));
+    }
 
     if (this.state.paused) {
-      if (!this.state.videoPlayTimer.getOff()) {
-        this.state.videoPlayTimer.resume();
-      }
-
-      if (!this.state.newGameTimer.getOff()) {
-        this.state.newGameTimer.resume();
-      }
+      if (!this.state.gameSettings.devStartingHexNote) return this.restart();
       this.setState({ interval: this.createGameLoop() });
     } else {
       this.state.interval.clear();
-      if (!this.state.videoPlayTimer.getOff()) {
-        this.state.videoPlayTimer.pause();
-      }
-
-      if (!this.state.newGameTimer.getOff()) {
-        this.state.newGameTimer.pause();
-      }
     }
     this.setState((prev: GameState) => ({
-      paused: !prev.paused
+      paused: !prev.paused,
+      pausedTiles: !prev.pausedTiles
     }));
 
     for (let tile of this.state.tiles) {
@@ -337,41 +386,45 @@ class Game extends React.Component<GameProps> {
         this.setState((prev: GameState) => ({
           currHexNote: prev.currHexNote + 1
         }));
-        for (let tile of this.state.tiles) {
+        /*for (let tile of this.state.tiles) {
           if (
             this.state.currHexNote - (tile.hexNote + 19) === 0 &&
-            this.devStartingHexNote <= tile.hexNote
+            this.state.gameSettings.devStartingHexNote <= tile.hexNote
           ) {
-            /*if (!tile.wasHit)
+            if (!tile.wasHit)
               this.addPoints(
                 this.state.points >= 10 ? -10 : -this.state.points
-              );*/
-            if (tile.x === this.tiles[this.tiles.length - 1].x) {
+              );
+            if (
+              tile.x ===
+              this.state.gameSettings.tiles[
+                this.state.gameSettings.tiles.length - 1
+              ].x
+            ) {
               setTimeout(() => {
                 console.log("The End");
-              }, (15000 * this.endOffset) / this.bpm);
+              }, (15000 * this.state.gameSettings.endOffset) / this.state.gameSettings.bpm);
             }
           }
-        }
+      }*/
       },
-      (150 / this.bpm) * 100,
+      (150 / this.state.gameSettings.bpm) * 100,
       {}
     );
   };
 
   newGame() {
     let pointSum = 0;
-    for (let tile of this.tiles) {
+    for (let tile of this.state.gameSettings.tiles) {
       if (this.notes.includes(tile.type)) {
         pointSum += 80;
-      } else pointSum += tile.length * 15;
+      } else pointSum += tile.length * 5;
     }
-
     this.setState({
-      tiles: this.tiles,
+      tiles: this.state.gameSettings.tiles,
       maxPoints: pointSum,
-      currHexNote: this.devStartingHexNote,
-      paused: false,
+      currHexNote: this.state.gameSettings.devStartingHexNote,
+      pausedTiles: false,
       points: 0,
       interval: this.createGameLoop()
     });
@@ -382,7 +435,7 @@ class Game extends React.Component<GameProps> {
         <div className="game">
           {this.state.fields.map((field, i) => {
             return (
-              <div className={"game_field " + (i === 3 ? "bgc" : "")}>
+              <div className={"game_field"}>
                 {[0, 1, 2, 3].map((j) => {
                   return (
                     <div
@@ -395,7 +448,8 @@ class Game extends React.Component<GameProps> {
                         //up
                         this.state.tiles.map((tile) => {
                           return this.compareLetters[j].includes(tile.type) &&
-                            this.devStartingHexNote <= tile.hexNote &&
+                            this.state.gameSettings.devStartingHexNote <=
+                              tile.hexNote &&
                             this.state.currHexNote > tile.hexNote &&
                             this.state.currHexNote <=
                               tile.hexNote +
@@ -404,7 +458,18 @@ class Game extends React.Component<GameProps> {
                             this.notes.includes(tile.type) ? (
                               <>
                                 <img
-                                  src=""
+                                  src={(() => {
+                                    switch (tile.type) {
+                                      case "U":
+                                        return "assets/pictures/arrows/up.png";
+                                      case "L":
+                                        return "assets/pictures/arrows/left.png";
+                                      case "R":
+                                        return "assets/pictures/arrows/right.png";
+                                      case "D":
+                                        return "assets/pictures/arrows/down.png";
+                                    }
+                                  })()}
                                   alt={(() => {
                                     switch (tile.type) {
                                       case "U":
@@ -419,24 +484,34 @@ class Game extends React.Component<GameProps> {
                                   })()}
                                   style={{
                                     animation: `tile_animation ${
-                                      315 / this.bpm
+                                      315 / this.state.gameSettings.bpm
                                     }s forwards linear ${
-                                      tile.wasHit ||
-                                      this.state.paused ||
-                                      this.state.pausedTiles
+                                      tile.wasHit || this.state.pausedTiles
                                         ? "paused"
                                         : ""
                                     } ${
                                       tile.wasHit
                                         ? `, tile_fadeOut forwards ${
-                                            (15 * 5) / this.bpm
+                                            (15 * 5) /
+                                            this.state.gameSettings.bpm
                                           }s`
                                         : ""
                                     }`
                                   }}
                                 />
                                 <img
-                                  src=""
+                                  src={(() => {
+                                    switch (tile.type) {
+                                      case "U":
+                                        return "assets/pictures/arrows/up.png";
+                                      case "L":
+                                        return "assets/pictures/arrows/left.png";
+                                      case "R":
+                                        return "assets/pictures/arrows/right.png";
+                                      case "D":
+                                        return "assets/pictures/arrows/down.png";
+                                    }
+                                  })()}
                                   alt={(() => {
                                     switch (tile.type) {
                                       case "U":
@@ -454,26 +529,27 @@ class Game extends React.Component<GameProps> {
                                     hit: tile.wasHit
                                   })}
                                   style={{
-                                    animationDuration: `${315 / this.bpm}s`,
-                                    animationPlayState:
-                                      this.state.paused ||
-                                      this.state.pausedTiles
-                                        ? "paused"
-                                        : ""
+                                    animationDuration: `${
+                                      315 / this.state.gameSettings.bpm
+                                    }s`,
+                                    animationPlayState: this.state.pausedTiles
+                                      ? "paused"
+                                      : ""
                                   }}
                                 />
                               </>
                             ) : (
-                              <Slider
+                              /*<Slider
                                 id={tile.x}
                                 handleContent={tile.type}
                                 length={tile.length}
-                                bpm={this.bpm}
+                                bpm={this.state.gameSettings.bpm}
                                 addPoints={(pointAmount: number) => {
                                   this.addPoints(pointAmount);
                                 }}
                                 ref={tile.ref}
-                              />
+                              />*/
+                              <></>
                             )
                           ) : (
                             <></>
@@ -492,6 +568,20 @@ class Game extends React.Component<GameProps> {
         <p>
           Punkty: {this.state.points} / {this.state.maxPoints}
         </p>
+        <div className="progressBar">
+          {this.state.maxPoints ? (
+            <div
+              className="progressBar_content"
+              style={{
+                transform: `translateX(-${
+                  100 - (this.state.points / this.state.maxPoints) * 100
+                }%)`
+              }}
+            ></div>
+          ) : (
+            <></>
+          )}
+        </div>
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -508,253 +598,276 @@ class Game extends React.Component<GameProps> {
         >
           Pause
         </button>
+        <button
+          onClick={async (e) => {
+            e.preventDefault();
 
-        <Youtube
-          url={"https://www.youtube.com/watch?v=cvvd-9azD1M"}
-          width="200px"
-          height="200px"
-          playing={!this.state.paused}
-          muted={this.state.muted}
-          ref={this.state.playerRef}
-          config={{
-            youtube: {
-              playerVars: {
-                autoplay: 1,
-                controls: 0,
-                disablekb: 1,
-                showinfo: 0,
-                rel: 0,
-                fs: 0,
-                start:
-                  this.initVideoState +
-                  (15 * this.devStartingHexNote) / this.bpm
+            await axios.get("/songs/song1.json").then((song: any) => {
+              this.refreshNotes(song.data);
+            });
+          }}
+        >
+          Refresh
+        </button>
+        <div className="player">
+          <Youtube
+            url={`https://www.youtube.com/watch?v=${this.state.gameSettings.videoId}`}
+            playing={!this.state.paused}
+            muted={this.state.muted}
+            ref={this.state.playerRef}
+            config={{
+              youtube: {
+                playerVars: {
+                  autoplay: 1,
+                  controls: 0,
+                  disablekb: 1,
+                  showinfo: 0,
+                  rel: 0,
+                  modestbranding: 1,
+                  fs: 0
+                }
               }
-            }
-          }}
-          onBufferEnd={() => {
-            if (!this.state.initializedVideo) {
-              this.setState({
-                initializedVideo: true,
-                newGameTimer: new ExtendedTimer(() => {
-                  this.newGame();
-                  this.state.newGameTimer.setOff();
-                }, ((15 * this.startOffset) / this.bpm) * 1000),
-                videoPlayTimer: new ExtendedTimer(() => {
-                  if (!this.state.paused) {
-                    this.state.videoPlayTimer.setOff();
-                    this.setState({
-                      gameStarted: true,
-                      paused: 0,
-                      muted: 0
-                    });
-                  }
-                }, (240 / this.bpm) * 1000)
-              });
-            } else if (this.state.paused) {
-              this.pause();
-              this.setState({
-                afterUnpause: true,
-                pausedTiles: false,
-                restartTimer: setTimeout(() => {
-                  this.pause();
-                }, 50)
-              });
-            }
-          }}
-          onPause={() => {
-            if (this.state.gameStarted && !this.state.paused) {
-              this.pause();
-            }
-            if (this.state.afterUnpause) {
-              this.pause();
-            }
-          }}
-          onProgress={() => {
-            if (this.state.afterUnpause) {
-              clearTimeout(this.state.restartTimer);
-              this.setState({
-                afterUnpause: false
-              });
-            }
-          }}
-        />
+            }}
+            onReady={() => {
+              this.state.playerRef.current.seekTo(
+                this.state.gameSettings.initVideoState +
+                  (15 * this.state.gameSettings.devStartingHexNote) /
+                    this.state.gameSettings.bpm
+              );
+            }}
+            onBufferEnd={() => {
+              if (!this.state.initializedVideo) {
+                this.setState({
+                  initializedVideo: true,
+                  paused: true,
+                  newGameTimer: new ExtendedTimer(() => {
+                    this.newGame();
+                    this.state.newGameTimer.setOff();
+                  }, ((15 * this.state.gameSettings.startOffset) / this.state.gameSettings.bpm) * 1000),
+                  videoPlayTimer: new ExtendedTimer(() => {
+                    if (this.state.paused) {
+                      this.state.videoPlayTimer.setOff();
+                      this.setState({
+                        gameStarted: true,
+                        paused: false,
+                        muted: false
+                      });
+                    }
+                  }, (240 / this.state.gameSettings.bpm) * 1000 + this.state.gameSettings.videoStartingOffset)
+                });
+              }
+            }}
+            onPlay={() => {
+              if (this.state.paused) {
+                this.restart();
+              }
+            }}
+            onPause={() => {
+              if (this.state.gameStarted && !this.state.paused) {
+                this.restart();
+              }
+            }}
+            onProgress={() => {
+              if (this.state.afterUnpause) {
+                clearTimeout(this.state.restartTimer);
+                this.setState({
+                  afterUnpause: false
+                });
+              }
+            }}
+          />
+        </div>
       </>
     );
   }
 }
 
-export default class App extends React.Component {
-  state = {
-    game: []
-  };
+function songHeaderValidate(song: SongJson) {
+  let errors: string[] = [],
+    alerts: string[] = [];
 
-  songHeaderValidate(song: SongJson) {
-    let errors: string[] = [],
-      alerts: string[] = [];
+  try {
+    if (song.header.author === "" || typeof song.header.author !== "string")
+      errors.push("author: No (or wrong) author specified");
+    if (song.header.title === "" || typeof song.header.title !== "string")
+      errors.push("title: No (or wrong) title specified");
+    if (!song.header.bpm || typeof song.header.bpm !== "number")
+      errors.push("bpm: No (or wrong) bpm specified");
+    if (song.header.videoId === "" || typeof song.header.videoId !== "string")
+      errors.push("videoId: You need to specify Youtube video's id (watch?v=)");
+    if (song.header.startOffset === undefined)
+      alerts.push(
+        "startOffset: You can specify the starting offset (delay between incoming notes and song start)"
+      );
+    else if (
+      typeof song.header.startOffset !== "number" ||
+      song.header.startOffset < 0
+    )
+      errors.push("startOffset: Wrong offset specified");
 
-    try {
-      if (song.header.author === "" || typeof song.header.author !== "string")
-        errors.push("author: No (or wrong) author specified");
-      if (song.header.title === "" || typeof song.header.title !== "string")
-        errors.push("title: No (or wrong) title specified");
-      if (!song.header.bpm || typeof song.header.bpm !== "number")
-        errors.push("bpm: No (or wrong) bpm specified");
-      if (song.header.videoId === "" || typeof song.header.videoId !== "string")
-        errors.push(
-          "videoId: You need to specify Youtube video's id (watch?v=)"
-        );
-      if (song.header.startOffset === undefined)
-        alerts.push(
-          "startOffset: You can specify the starting offset (delay between incoming notes and song start)"
-        );
-      else if (
-        typeof song.header.startOffset !== "number" ||
-        song.header.startOffset < 0
-      )
-        errors.push("startOffset: Wrong offset specified");
+    if (song.header.endOffset === undefined)
+      alerts.push(
+        "endOffset: You can specify the ending offset (delay between last note and end of the game)"
+      );
+    else if (
+      typeof song.header.endOffset !== "number" ||
+      song.header.endOffset < 0
+    )
+      errors.push("endOffset: Wrong offset specified");
 
-      if (song.header.endOffset === undefined)
-        alerts.push(
-          "endOffset: You can specify the ending offset (delay between last note and end of the game)"
-        );
-      else if (
-        typeof song.header.endOffset !== "number" ||
-        song.header.endOffset < 0
-      )
-        errors.push("endOffset: Wrong offset specified");
+    if (song.header.videoStartingPoint === undefined)
+      alerts.push(
+        "videoStartingPoint: You can specify the starting video second"
+      );
+    else if (
+      typeof song.header.videoStartingPoint !== "number" ||
+      song.header.videoStartingPoint < 0
+    )
+      errors.push("videoStartingPoint: Wrong video starting time specified");
 
-      if (song.header.videoStartingPoint === undefined)
-        alerts.push(
-          "videoStartingPoint: You can specify the starting video second"
-        );
-      else if (
-        typeof song.header.videoStartingPoint !== "number" ||
-        song.header.videoStartingPoint < 0
-      )
-        errors.push("videoStartingPoint: Wrong video starting time specified");
+    if (song.header.devStartingTact === undefined)
+      alerts.push(
+        "devStartingTact: You can specify the starting tact (for easier level creating)"
+      );
+    else if (
+      typeof song.header.devStartingTact !== "number" ||
+      song.header.devStartingTact < 0
+    )
+      errors.push("devStartingTact: Wrong tact number specified");
 
-      if (song.header.devStartingTact === undefined)
-        alerts.push(
-          "devStartingTact: You can specify the starting tact (for easier level creating)"
-        );
-      else if (
-        typeof song.header.devStartingTact !== "number" ||
-        song.header.devStartingTact < 0
-      )
-        errors.push("devStartingTact: Wrong tact number specified");
-    } catch (e) {
-      errors.push("unknown fatal error");
-    }
-
-    return [errors, alerts];
+    if (song.header.videoStartingOffset === undefined)
+      alerts.push(
+        "videoStartingOffset: You can specify the offset between gameStart and music play"
+      );
+    else if (
+      typeof song.header.videoStartingOffset !== "number" ||
+      song.header.videoStartingOffset < 0
+    )
+      errors.push("videoStartingOffset: Wrong video offset specified");
+  } catch (e) {
+    errors.push("unknown fatal error");
   }
-  songNotesValidation(song: SongJson) {
-    let errors: string[] = [],
-      alerts: string[] = [],
-      tiles: Tiles[] = [];
 
-    let extraPos = 0,
-      index = 0,
-      iButOnlyNotesInRow = 0;
+  return [errors, alerts];
+}
 
-    for (let [i, row] of song.notes.entries()) {
-      if (Array.isArray(row) || typeof row === "number") {
-        if (Array.isArray(row)) {
-          for (let [j, item] of row.entries()) {
-            if (
-              Array.isArray(item) ||
-              item === 0 ||
-              notes.includes(typeof item === "string" ? item : "xxx")
-            ) {
-              if (Array.isArray(item)) {
-                for (let [k, itemArr] of item.entries()) {
-                  if (
-                    Array.isArray(itemArr) ||
-                    notes.includes(
-                      typeof itemArr === "string" ? itemArr : "xxx"
-                    )
-                  ) {
-                    if (Array.isArray(itemArr)) {
-                      if (
-                        !sliders.includes(itemArr[0].toString()) &&
-                        typeof itemArr[1] !== "number"
-                      ) {
-                        errors.push(
-                          "Wrong slider data in row " +
-                            i +
-                            " at position " +
-                            j +
-                            ".Item number " +
-                            k
-                        );
-                      } else {
-                        tiles.push({
-                          x: index,
-                          hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
-                          type: itemArr[0],
-                          length: itemArr[1],
-                          ref: React.createRef(),
-                          wasHit: false
-                        });
-                        index++;
-                      }
+function songNotesValidation(song: SongJson) {
+  let errors: string[] = [],
+    alerts: string[] = [],
+    tiles: Tiles[][] = [];
+
+  let extraPos = 0,
+    index = 0,
+    iButOnlyNotesInRow = 0;
+
+  for (let [i, row] of song.notes.entries()) {
+    if (
+      Array.isArray(row) ||
+      typeof row === "number" ||
+      typeof row === "string"
+    ) {
+      if (typeof row === "string") continue;
+      if (Array.isArray(row)) {
+        for (let [j, item] of row.entries()) {
+          if (
+            Array.isArray(item) ||
+            item === 0 ||
+            notes.includes(typeof item === "string" ? item : "xxx")
+          ) {
+            if (Array.isArray(item)) {
+              for (let [k, itemArr] of item.entries()) {
+                if (
+                  Array.isArray(itemArr) ||
+                  notes.includes(typeof itemArr === "string" ? itemArr : "xxx")
+                ) {
+                  if (Array.isArray(itemArr)) {
+                    if (
+                      !sliders.includes(itemArr[0].toString()) &&
+                      typeof itemArr[1] !== "number"
+                    ) {
+                      errors.push(
+                        "Wrong slider data in row " +
+                          i +
+                          " at position " +
+                          j +
+                          ".Item number " +
+                          k
+                      );
                     } else {
                       tiles.push({
                         x: index,
                         hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
-                        type: itemArr.toString(),
+                        type: itemArr[0],
+                        length: itemArr[1],
+                        ref: React.createRef(),
                         wasHit: false
                       });
                       index++;
                     }
-                  } else
-                    errors.push(
-                      "Wrong slider data in row " +
-                        i +
-                        " at position " +
-                        j +
-                        ". Item number " +
-                        k
-                    );
-                }
-              } else {
-                if (typeof item !== "number") {
-                  tiles.push({
-                    x: index,
-                    hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
-                    type: item,
-                    wasHit: false
-                  });
-                  index++;
-                }
+                  } else {
+                    tiles.push({
+                      x: index,
+                      hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
+                      type: itemArr.toString(),
+                      wasHit: false
+                    });
+                    index++;
+                  }
+                } else
+                  errors.push(
+                    "Wrong slider data in row " +
+                      i +
+                      " at position " +
+                      j +
+                      ". Item number " +
+                      k
+                  );
               }
-            } else errors.push("Wrong item in row " + i + " at position " + j);
-          }
-          iButOnlyNotesInRow++;
-        } else extraPos += row;
-      } else errors.push("typeError: Wrong type of row number " + i);
-    }
-
-    return [errors, alerts, tiles];
+            } else {
+              if (typeof item !== "number") {
+                tiles.push({
+                  x: index,
+                  hexNote: iButOnlyNotesInRow * 16 + j + extraPos,
+                  type: item,
+                  wasHit: false
+                });
+                index++;
+              }
+            }
+          } else errors.push("Wrong item in row " + i + " at position " + j);
+        }
+        iButOnlyNotesInRow++;
+      } else extraPos += row;
+    } else errors.push("typeError: Wrong type of row number " + i);
   }
+  let conplexTiles = new Array(song.notes.length).fill([]);
+  //for()
 
-  countStartingHexNote(devTact: number, notes: SongJson["notes"]) {
-    let amountOfNotNumbers = 0,
-      totalOfNumbers = 0;
-    for (let noteRow of notes) {
-      if (typeof noteRow === "number") {
-        totalOfNumbers += noteRow;
-      } else amountOfNotNumbers++;
+  return [errors, alerts, tiles];
+}
 
-      if (amountOfNotNumbers === devTact) break;
-    }
-    return 16 * (devTact - 1) + totalOfNumbers;
+function countStartingHexNote(devTact: number, notes: SongJson["notes"]) {
+  let amountOfNotNumbers = 0,
+    totalOfNumbers = 0;
+  for (let noteRow of notes) {
+    if (typeof noteRow === "number") {
+      totalOfNumbers += noteRow;
+    } else amountOfNotNumbers++;
+
+    if (amountOfNotNumbers === devTact) break;
   }
+  return 16 * (devTact - 1) + totalOfNumbers;
+}
+
+export default class LoadGame extends React.Component {
+  state = {
+    game: []
+  };
 
   componentDidMount() {
     axios.get("/songs/song1.json").then((song: any) => {
-      let headerVal = this.songHeaderValidate(song.data);
-      let notesVal = this.songNotesValidation(song.data);
+      let headerVal = songHeaderValidate(song.data);
+      let notesVal = songNotesValidation(song.data);
       if (!headerVal[0][0] && !notesVal[0][0]) {
         if (headerVal[1][0] || notesVal[1][0]) {
           console.log("warnings: ", [...headerVal[1], ...notesVal[0]]);
@@ -766,7 +879,7 @@ export default class App extends React.Component {
               notes={notesVal[2]}
               devStartingHexNote={
                 song.data.header.devStartingTact
-                  ? this.countStartingHexNote(
+                  ? countStartingHexNote(
                       song.data.header.devStartingTact,
                       song.data.notes
                     )

@@ -116,11 +116,40 @@ export default class Slider extends React.Component<SliderProps> {
                   : "running"
             }}
           >
-            <img src="" alt={this.state.handleContent} />
+            <img
+              src={(() => {
+                switch (this.state.handleContent) {
+                  case "1":
+                    return "assets/pictures/sliders/1.png";
+                  case "2":
+                    return "assets/pictures/sliders/2.png";
+                  case "3":
+                    return "assets/pictures/sliders/3.png";
+                  case "4":
+                    return "assets/pictures/sliders/4.png";
+                }
+              })()}
+              alt={this.state.handleContent}
+              style={{
+                filter: this.state.animationEnd ? "grayscale(100%)" : ""
+              }}
+            />
           </div>
           <div
             className="slider_bar"
             style={{
+              backgroundColor: `#${(() => {
+                switch (this.state.handleContent) {
+                  case "1":
+                    return "D62B2B";
+                  case "2":
+                    return "00B51A";
+                  case "3":
+                    return "82A4F7";
+                  case "4":
+                    return "FFD400";
+                }
+              })()}`,
               animation: `slider_animation${this.state.id} forwards linear`,
               animationDuration: `${this.sliderAnimDuration()}s`,
               animationPlayState: this.state.paused ? "paused" : "running",
