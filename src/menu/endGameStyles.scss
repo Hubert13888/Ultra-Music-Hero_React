@@ -1,0 +1,58 @@
+.gameEnd {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  &>* {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .firstColumn {
+    grid-column: 1;
+    grid-row: 1;
+    width: 50vw;
+    .progressBar {
+      position: relative;
+      width: 30vw;
+      height: 15vh;
+      background-color: #fff;
+      overflow: hidden;
+   
+      .bar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        position: absolute;
+        top:0;
+        left: -100%;
+        height: inherit;
+        width: inherit;
+        background-color: blue;
+  
+      }
+      p{
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        right: 2vw;
+        color: black;
+        margin: 0;
+      }
+    }
+  }
+  .secondColumn {
+    grid-column: 2;
+    grid-row: 1;
+    width: 50vw;
+    .menu {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      .option {
+        cursor: pointer;
+      }
+    }
+  }
+}

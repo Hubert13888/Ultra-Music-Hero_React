@@ -1,0 +1,17 @@
+.instructions {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: url("assets/pictures/main-menu/information.png") no-repeat center;
+  background-size: contain;
+
+  a {
+      color: rgb(107, 107, 226);
+  }
+  .a_embded {
+      margin-left: 5px;
+  }
+}

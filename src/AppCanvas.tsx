@@ -1,11 +1,21 @@
 import React from "react";
-import Slider from "./Slider";
 import Classnames from "classnames";
-import Youtube from "react-player/lazy";
+import Youtube from "react-player";
 import axios from "axios";
 import "./canvasGameStyles.scss";
 import { ExtendedTimer } from "./Timers";
-import accurateInterval from "accurate-interval";
+import "./gameLoadStyles.scss";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faBars,
+  faHome,
+  faBinoculars,
+  faUserCircle,
+  faComments,
+  faMapMarkedAlt,
+  faMountain
+} from "@fortawesome/free-solid-svg-icons";
 
 const sliders = ["1", "2", "3", "4"],
   notes = ["U", "D", "L", "R"];
@@ -84,6 +94,8 @@ interface GameState {
 }
 
 interface GameSettings {
+  author: string;
+  title: string;
   videoId: string;
   tiles: Tiles[];
   bpm: number;
@@ -129,7 +141,12 @@ class Game extends React.Component<GameProps> {
   constructor(props: GameProps) {
     super(props);
 
+    this.test = props.test;
+
+    this.win = props.win;
     this.state.gameSettings = {
+      title: props.header.title,
+      author: props.header.author,
       videoId: props.header.videoId,
       tiles: props.notes,
       bpm: props.header.bpm,
@@ -151,14 +168,14 @@ class Game extends React.Component<GameProps> {
       s2Img = new Image(),
       s3Img = new Image(),
       s4Img = new Image();
-    upImg.src = "assets/pictures/arrows/up.png";
-    leftImg.src = "assets/pictures/arrows/left.png";
-    rightImg.src = "assets/pictures/arrows/right.png";
-    downImg.src = "assets/pictures/arrows/down.png";
-    s1Img.src = "assets/pictures/sliders/1.png";
-    s2Img.src = "assets/pictures/sliders/2.png";
-    s3Img.src = "assets/pictures/sliders/3.png";
-    s4Img.src = "assets/pictures/sliders/4.png";
+    upImg.src = "assets/pictures/g-arrows/up.png";
+    leftImg.src = "assets/pictures/g-arrows/left.png";
+    rightImg.src = "assets/pictures/g-arrows/right.png";
+    downImg.src = "assets/pictures/g-arrows/down.png";
+    s1Img.src = "assets/pictures/g-sliders/1.png";
+    s2Img.src = "assets/pictures/g-sliders/2.png";
+    s3Img.src = "assets/pictures/g-sliders/3.png";
+    s4Img.src = "assets/pictures/g-sliders/4.png";
 
     return [
       [upImg, leftImg, rightImg, downImg],
@@ -177,8 +194,7 @@ class Game extends React.Component<GameProps> {
     const canvas: HTMLCanvasElement = this.state.canvasRef.current;
 
     canvas.width = this.w(100);
-    let height = this.h(10) > this.w(15) ? this.w(15) : this.h(10);
-    canvas.height = 4 * height + 5;
+    canvas.height = this.h(100);
     let c = canvas.getContext("2d"),
       img = this.canvasLoadImages();
 
@@ -189,9 +205,9 @@ class Game extends React.Component<GameProps> {
 
     window.onresize = async () => {
       let canvas: HTMLCanvasElement = this.state.canvasRef.current;
+      if (!canvas) return;
       canvas.width = this.w(100);
-      let height = this.h(10) > this.w(15) ? this.w(15) : this.h(10);
-      canvas.height = 4 * height + 5;
+      canvas.height = this.h(100);
       this.setState({
         c: canvas.getContext("2d")
       });
@@ -225,7 +241,9 @@ class Game extends React.Component<GameProps> {
     }));
   }
 
-  async moveGame(now) {
+  moveGame(now) {
+    let stripeH = this.h(10) > this.w(15) ? this.w(15) : this.h(10);
+    let gamePadTop = this.h(50) - 2 * stripeH;
     let canvas: HTMLCanvasElement = this.state.canvasRef.current;
     if (!canvas) return;
     this.state.c.clearRect(0, 0, canvas.width, canvas.height);
@@ -251,7 +269,10 @@ class Game extends React.Component<GameProps> {
       ) {
         this.state.theEnd = true;
         this.pause();
-        console.log("The End");
+        this.win({
+          points: this.state.points,
+          maxPoints: this.state.maxPoints
+        });
       } else requestAnimationFrame(this.moveGame.bind(this));
     } else {
       requestAnimationFrame(this.moveGame.bind(this));
@@ -372,8 +393,6 @@ class Game extends React.Component<GameProps> {
       if (this.notes.includes(tile.type) || this.sliders.includes(tile.type)) {
         let img, posY, sliderColor;
 
-        let stripeH = this.h(10) > this.w(15) ? this.w(15) : this.h(10);
-
         if (tile.type === "U") {
           img = this.state.img[0][0];
           posY = (stripeH - posW) / 2;
@@ -456,7 +475,7 @@ class Game extends React.Component<GameProps> {
           let sP = tile.sliderFillPercent ? tile.sliderFillPercent : 0;
 
           sliders.push({
-            color: "#dddddd",
+            color: "#666666",
             x: Math.floor(posX + posW / 2),
             y: Math.floor(posY + posW / 3),
             w: tile.length * this.w(5) * sP,
@@ -564,6 +583,150 @@ class Game extends React.Component<GameProps> {
       this.state[`m${cl.type}`] = "waitForUp";
     }
 
+    //Draw navbar
+
+    this.state.c.fillRect(0, 0, this.w(100), this.h(10));
+
+    let titleSize = 20;
+
+    this.state.c.font = `${titleSize}px Arial`;
+    this.state.c.fillStyle = "#ffffff";
+    this.state.c.fillText(
+      `${this.state.gameSettings.author} - ${this.state.gameSettings.title}`,
+      this.w(10),
+      this.h(5) + titleSize / 2
+    );
+
+    //Draw information bar
+
+    this.state.c.fillStyle = "#000000";
+    this.state.c.fillRect(0, this.h(80), this.w(100), this.h(20));
+
+    this.state.c.beginPath();
+    this.state.c.strokeStyle = "rgb(255, 255, 255)";
+    this.state.c.lineWidth = 1;
+
+    this.state.c.moveTo(0, this.h(83));
+    this.state.c.lineTo(this.w(100), this.h(83));
+
+    for (let i = 1; i < 8; i++) {
+      this.state.c.moveTo(this.w((i * 100) / 8), this.h(83));
+      this.state.c.lineTo(this.w((i * 100) / 8), this.h(85));
+    }
+
+    this.state.c.fillStyle = "rgb(0, 133, 6)";
+    for (let i = 0; i < this.state.hitInRow % 9; i++) {
+      this.state.c.fillRect(
+        this.w((i * 100) / 8),
+        this.h(83),
+        this.w(100 / 8),
+        this.h(2)
+      );
+    }
+
+    this.state.c.moveTo(0, this.h(85));
+    this.state.c.lineTo(this.w(100), this.h(85));
+    this.state.c.moveTo(0, this.h(87));
+    this.state.c.lineTo(this.w(100), this.h(87));
+    this.state.c.stroke();
+
+    this.state.c.fillStyle = "rgb(0, 133, 6)";
+    this.state.c.filter = "invert(1)";
+    this.state.c.fillRect(
+      0,
+      this.h(85),
+      this.w(100 * (this.state.points / this.state.maxPoints)),
+      this.h(2)
+    );
+    this.state.c.filter = "none";
+    let text = `` + this.state.points;
+    let textW = this.state.c.measureText(text).width;
+
+    let pointsSize = 32;
+    this.state.c.font = `${pointsSize}px Arial`;
+    this.state.c.fillStyle = "rgb(255, 255, 255)";
+    this.state.c.fillText(text, this.w(50) - textW / 2, this.h(95));
+
+    let percentOfPoints = Math.round(
+      (this.state.points * 100) / this.state.maxPoints
+    );
+    this.state.c.fillText(
+      `${isNaN(percentOfPoints) ? 0 : percentOfPoints}%`,
+      this.w(25),
+      this.h(95)
+    );
+
+    this.state.c.fillText(`${this.state.multiplier}x`, this.w(70), this.h(95));
+
+    this.state.c.font = `${pointsSize / 2}px Arial`;
+    text = ` / ` + this.state.maxPoints;
+    this.state.c.fillText(text, this.w(50) + textW + 5, this.h(92));
+
+    //Draw the board
+    this.state.c.fillStyle = "rgb(0, 0, 0, 0.8)";
+    this.state.c.fillRect(
+      0,
+      gamePadTop - this.h(2),
+      this.w(100),
+      stripeH * 4 + this.h(2) * 2
+    );
+    this.state.c.fillStyle = "#000000";
+
+    //Draw the clatch
+    let s = this.w(5 * 4);
+    let a = s - this.w(5) - posW / 4,
+      b = s + this.w(5) + posW / 4;
+
+    this.state.c.fillStyle = "rgba(0, 133, 6, 0.8)";
+    this.state.c.fillRect(
+      a,
+      gamePadTop - this.h(2),
+      b - a,
+      4 * stripeH + this.h(2) * 2
+    );
+    this.state.c.fillStyle = "#000000";
+
+    this.state.c.filter = "brightness(60%)";
+    this.state.c.beginPath();
+    this.state.c.strokeStyle = "rgb(0, 133, 6)";
+    this.state.c.lineWidth = this.w(1);
+    this.state.c.moveTo(s, gamePadTop - this.h(2));
+    this.state.c.lineTo(s, gamePadTop + 4 * stripeH + this.h(2));
+    this.state.c.stroke();
+
+    this.state.c.beginPath();
+    this.state.c.strokeStyle = "rgb(0, 133, 6)";
+    this.state.c.lineWidth = this.w(0.2);
+    this.state.c.moveTo(b, gamePadTop - this.h(2));
+    this.state.c.lineTo(b, gamePadTop + 4 * stripeH + this.h(2));
+    this.state.c.stroke();
+
+    this.state.c.filter = "none";
+
+    this.state.c.beginPath();
+    this.state.c.strokeStyle = "rgb(0, 133, 6)";
+    this.state.c.lineWidth = this.w(0.2);
+    this.state.c.moveTo(a, gamePadTop - this.h(2));
+    this.state.c.lineTo(a, gamePadTop + 4 * stripeH + this.h(2));
+    this.state.c.stroke();
+
+    this.state.c.beginPath();
+    this.state.c.strokeStyle = "#ffffff";
+    this.state.c.lineWidth = this.w(0.2);
+    this.state.c.moveTo(0, gamePadTop);
+    this.state.c.lineTo(this.w(100), gamePadTop);
+    this.state.c.moveTo(0, gamePadTop + stripeH);
+    this.state.c.lineTo(this.w(100), gamePadTop + stripeH);
+    this.state.c.moveTo(0, gamePadTop + 2 * stripeH);
+    this.state.c.lineTo(this.w(100), gamePadTop + 2 * stripeH);
+    this.state.c.moveTo(0, gamePadTop + 3 * stripeH);
+    this.state.c.lineTo(this.w(100), gamePadTop + 3 * stripeH);
+    this.state.c.moveTo(0, gamePadTop + 4 * stripeH);
+    this.state.c.lineTo(this.w(100), gamePadTop + 4 * stripeH);
+    this.state.c.stroke();
+
+    //Draw the
+
     this.state.c.font = "12px Arial";
     this.state.c.fillStyle = "black";
     this.state.c.fillText(
@@ -581,18 +744,19 @@ class Game extends React.Component<GameProps> {
 
     for (let b of sliders) {
       this.state.c.fillStyle = b.color;
-      this.state.c.fillRect(b.x, b.y, b.w, b.h);
+      this.state.c.fillRect(b.x, b.y + gamePadTop, b.w, b.h);
     }
     this.state.c.fillStyle = "#000000";
-    for (let b of buttons) this.state.c.drawImage(b.img, b.x, b.y, b.w, b.h);
+    for (let b of buttons)
+      this.state.c.drawImage(b.img, b.x, b.y + gamePadTop, b.w, b.h);
     this.state.c.filter = "grayscale(100%)";
     for (let b of buttonsFilter)
-      this.state.c.drawImage(b.img, b.x, b.y, b.w, b.h);
+      this.state.c.drawImage(b.img, b.x, b.y + gamePadTop, b.w, b.h);
     this.state.c.filter = "none";
 
     for (let b of buttonsFade) {
       this.state.c.globalAlpha = b.opacity;
-      this.state.c.drawImage(b.img, b.x, b.y, b.w, b.h);
+      this.state.c.drawImage(b.img, b.x, b.y + gamePadTop, b.w, b.h);
     }
     this.state.c.globalAlpha = 1;
   }
@@ -713,11 +877,14 @@ class Game extends React.Component<GameProps> {
       if (headerVal[1][0] || notesVal[1][0]) {
         console.log("warnings: ", [...headerVal[1], ...notesVal[0]]);
       }
+      console.log("loaded");
 
       this.setState((prev: GameState) => ({
         gameSettings: {
           ...prev,
           videoId: data.header.videoId,
+          title: data.header.title,
+          author: data.header.author,
           tiles: [...notesVal[2]],
           bpm: data.header.bpm,
           startOffset: data.header.startOffset ? data.header.startOffset : 0,
@@ -847,87 +1014,44 @@ class Game extends React.Component<GameProps> {
     return (
       <>
         <div className="game">
-          {this.state.fields.map((field, i) => {
-            return (
-              <div className={"game_field"}>
-                {[0, 1, 2, 3].map((j) => {
-                  return (
-                    <div
-                      className={Classnames({
-                        [`game_stripe stripe${j}`]: true,
-                        clearer: field.x === 3 || field.x === 4
-                      })}
-                    ></div>
-                  );
-                })}
-              </div>
-            );
-          })}
           <canvas ref={this.state.canvasRef}></canvas>
         </div>
-        <p>
-          Punkty: {this.state.points} / {this.state.maxPoints}
-        </p>
-        <p>Mnożnik: {this.state.multiplier}</p>
-        <p>Trafienia: {this.state.hitInRow % 9}</p>
-        <div className="progressBar">
-          {this.state.maxPoints ? (
-            <div
-              className="progressBar_content"
-              style={{
-                transform: `translateX(-${
-                  100 - (this.state.points / this.state.maxPoints) * 100
-                }%)`
-              }}
-            ></div>
-          ) : (
-            <></>
-          )}
-        </div>
-        <img id="upImg" src="assets/pictures/arrows/up.svg" alt="" />
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            this.restart();
-          }}
-        >
-          Restart
-        </button>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            this.pause();
-          }}
-        >
-          Pause
-        </button>
-        <button
-          onClick={async (e) => {
-            e.preventDefault();
 
-            await axios.get("/songs/song_test.json").then((song: any) => {
-              this.refreshNotes(song.data);
-            });
-          }}
-        >
-          Refresh
-        </button>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            document.documentElement.requestFullscreen();
-          }}
-        >
-          Fullscreen
-        </button>
+        <nav>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              this.restart();
+            }}
+          >
+            Restart
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              this.pause();
+            }}
+          >
+            Pause
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              document.documentElement.requestFullscreen();
+            }}
+          >
+            Fullscreen
+          </button>
+        </nav>
+
         <div className="player">
           <Youtube
             url={`https://www.youtube.com/watch?v=${this.state.gameSettings.videoId}`}
             playing={!this.state.paused}
             muted={this.state.muted}
             ref={this.state.playerRef}
-            width={100}
-            height={100}
+            width={"100vw"}
+            height={"100vh"}
             config={{
               youtube: {
                 playerVars: {
@@ -935,10 +1059,9 @@ class Game extends React.Component<GameProps> {
                   controls: 0,
                   disablekb: 1,
                   showinfo: 0,
-                  rel: 0,
-                  modestbranding: 1,
+                  ecver: 2,
                   fs: 0,
-                  vq: "tiny"
+                  rel: 0
                 }
               }
             }}
@@ -1183,67 +1306,250 @@ function countStartingHexNote(devTact: number, notes: SongJson["notes"]) {
   return 16 * (devTact - 1) + totalOfNumbers;
 }
 
-class LoadGame extends React.Component {
+function parseSongString(s) {
+  s = s
+    .replace(/\\n/g, "")
+    .replace(/\\'/g, "")
+    .replace(/\\"/g, "")
+    .replace(/\\&/g, "")
+    .replace(/\\r/g, "")
+    .replace(/\\t/g, "")
+    .replace(/\\b/g, "")
+    .replace(/\\f/g, "");
+
+  s = s.replace(/[\u0000-\u0019]+/g, "");
+  s = s.trim();
+  return s;
+}
+
+export default class LoadGame extends React.Component {
   state = {
-    game: []
+    game: [],
+    errorsToDisplay: [
+      <li>Hi there. You can create your own level here!</li>,
+      <li>
+        Don't know the rules? They are simple! Just check:{" "}
+        <a href="https://github.com" target="_blank">
+          Link
+        </a>{" "}
+        for more info.
+      </li>,
+      <li>
+        Your code errors will be displayed in this pop-up box just after
+        clicking load button
+      </li>,
+      <li>
+        All the warnings will be displayed in the console (F12 ˃ Console Tab) to
+        not annoy you
+      </li>
+    ],
+    showErrorMsg: true,
+    transErrorMsg: false,
+    writtenCode: "",
+    gameRef: React.createRef()
   };
 
-  componentDidMount() {
-    axios.get("/songs/song_test.json").then((song: any) => {
-      let headerVal = songHeaderValidate(song.data);
-      let notesVal = songNotesValidation(song.data);
+  constructor(props) {
+    super(props);
+    this.json = props.jsonData;
+    this.test = props.test;
+    this.url = props.url;
+    this.errorHandler = props.error;
+    this.winHandler = props.win;
+  }
+  async componentDidMount() {
+    let song = {};
+    //rozpocząć możliwość tworzenia nowych map
+    if (!this.test) {
+      if (this.url) {
+        try {
+          song = (await axios.get(this.url)).data;
+          if (!song || song === {} || typeof song !== "object")
+            return this.errorHandler("0");
+        } catch (e) {
+          return this.errorHandler("0");
+        }
+      } else if (this.json) {
+        try {
+          song = JSON.parse(this.json);
+        } catch (err) {
+          return this.errorHandler(err);
+        }
+      } else return this.errorHandler("2");
+
+      let headerVal = songHeaderValidate(song);
+      let notesVal = songNotesValidation(song);
       if (!headerVal[0][0] && !notesVal[0][0]) {
         if (headerVal[1][0] || notesVal[1][0]) {
-          console.log("warnings: ", [...headerVal[1], ...notesVal[0]]);
+          this.errorHandler([...headerVal[1], ...notesVal[0]]);
         }
         this.setState({
           game: [
             <Game
-              header={song.data.header}
+              header={song.header}
               notes={notesVal[2]}
-              devStartingHexNote={
-                song.data.header.devStartingTact
-                  ? countStartingHexNote(
-                      song.data.header.devStartingTact,
-                      song.data.notes
-                    )
-                  : 0
-              }
+              devStartingHexNote={0}
+              win={(data) => {
+                this.winHandler({
+                  ...data,
+                  title: song.header.title,
+                  author: song.header.author,
+                  notesAuthor: song.header.notesAuthor
+                });
+              }}
             />
           ]
         });
-      } else console.log("errors: ", [...headerVal[0], ...notesVal[0]]);
-    });
+      } else this.errorHandler([...headerVal[0], ...notesVal[0]]);
+    }
   }
   render() {
-    return <>{this.state.game}</>;
-  }
-}
+    if (this.test) {
+      let parser = new DOMParser();
+      return (
+        <div className="gameLoad">
+          <div
+            className={Classnames({
+              errors: true,
+              errorsTransition: this.state.transErrorMsg
+            })}
+          >
+            <div className="errorsList">
+              <h2>ERRORS</h2>
+              <ul>{this.state.errorsToDisplay}</ul>
+            </div>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                this.setState({
+                  transErrorMsg: !this.state.transErrorMsg
+                });
+              }}
+            >
+              Understood
+            </button>
+          </div>
+          <button
+            className={Classnames({
+              showErrors: true,
+              hide_showErrors: !this.state.transErrorMsg
+            })}
+            onClick={(e) => {
+              this.setState({
+                transErrorMsg: false
+              });
+            }}
+          >
+            Show errors
+          </button>
+          <div className="firstColumn">{this.state.game}</div>
+          <div className="secondColumn">
+            <div
+              contentEditable="true"
+              className="codeEditor"
+              onPaste={(e) => {
+                e.preventDefault();
+                var text = e.clipboardData.getData("text/plain");
+                document.execCommand("insertHTML", false, text);
+              }}
+              onKeyDown={(e) => {
+                if (e.keyCode === 9) {
+                  document.execCommand("insertHTML", false, "&#009");
+                  e.preventDefault();
+                }
+              }}
+              onInput={(e) => {
+                this.setState({
+                  writtenCode: e.target.textContent
+                });
+              }}
+              tabindex="0"
+            ></div>
 
-export default class AppCanvas extends React.Component {
-  state = {
-    game: true
-  };
-  render() {
-    return (
-      <>
-        {this.state.game ? (
-          <>
-            <LoadGame />
-          </>
-        ) : (
-          <></>
-        )}
-        <button
-          onClick={() => {
-            this.setState((prev) => ({
-              game: !prev.game
-            }));
-          }}
-        >
-          {this.state.game ? "Close Game" : "Open Game"}
-        </button>
-      </>
-    );
+            <button
+              onClick={(e) => {
+                this.setState({
+                  transErrorMsg: true
+                });
+                let compiledCode = {},
+                  error = false;
+                try {
+                  compiledCode = JSON.parse(
+                    parseSongString(this.state.writtenCode.trim())
+                  );
+                } catch (err) {
+                  error = [
+                    "JSON parse error. You've made an error in a JSON syntax"
+                  ];
+                }
+
+                if (!error) {
+                  if (Array.isArray(compiledCode.notes)) {
+                    if (typeof compiledCode.header === "object") {
+                      let headerVal = songHeaderValidate(compiledCode);
+                      let notesVal = songNotesValidation(compiledCode);
+                      if (!headerVal[0][0] && !notesVal[0][0]) {
+                        if (headerVal[1][0] || notesVal[1][0]) {
+                          console.log(
+                            "warnings: ",
+                            [...headerVal[1], ...notesVal[1]].join("\n")
+                          );
+                        }
+                        if (this.state.game[0]) {
+                          this.state.gameRef.current.refreshNotes(compiledCode);
+                          setTimeout(() => {
+                            this.state.gameRef.current.restart();
+                          }, 50);
+                        } else {
+                          this.setState({
+                            game: [
+                              <Game
+                                header={compiledCode.header}
+                                notes={notesVal[2]}
+                                devStartingHexNote={
+                                  compiledCode.header.devStartingTact
+                                    ? countStartingHexNote(
+                                        compiledCode.header.devStartingTact,
+                                        compiledCode.notes
+                                      )
+                                    : 0
+                                }
+                                win={(data) => {
+                                  console.log("Win!");
+                                }}
+                                ref={this.state.gameRef}
+                              />
+                            ]
+                          });
+                        }
+                      } else error = [...headerVal[0], ...notesVal[0]];
+                    } else error = ["Your code doesn't contain 'header' part"];
+                  } else {
+                    error = ["Your code doesn't contain valid 'notes' part"];
+                    if (typeof compiledCode.header !== "object")
+                      error.push(
+                        "Your code doesn't contain valid 'header' part"
+                      );
+                  }
+                }
+
+                if (error) {
+                  this.setState({
+                    transErrorMsg: false,
+                    errorsToDisplay: error.map((errerText) => {
+                      return <li>{errerText}</li>;
+                    })
+                  });
+                }
+              }}
+            >
+              Load
+            </button>
+          </div>
+        </div>
+      );
+    } else {
+      return <div className="gameLoad">{this.state.game}</div>;
+    }
   }
 }

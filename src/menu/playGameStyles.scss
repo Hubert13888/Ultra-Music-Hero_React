@@ -1,0 +1,70 @@
+.selectSong {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  flex-direction: row;
+
+  h1 {
+    text-align: center;
+  }
+  .first_column {
+    grid-row: 1;
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    table {
+      display: flex;
+      * {
+        justify-content: flex-start;
+        margin: 0;
+        padding: 0;
+      }
+      flex-direction: column;
+      tbody {
+        margin-top: 5vh;
+      }
+      td {
+        width: 80px;
+        justify-content: center;
+        text-align: center;
+      }
+      th, tr {
+        flex-direction: row;
+      }
+    }
+  }
+  .second_column {
+    grid-row: 1;
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+    
+    button {
+      height: 5vh;
+      margin-left: 2vw;
+    }
+
+    .game_code, input {
+      background-color: transparent;
+      border: none;
+      border-radius: 2px;
+      border: #ddd solid 2px;
+      width: 30vw;
+      height: clamp(10px, 5vh, 30px);
+      color: white;
+      padding: 3px;
+    }
+    section {
+      display: flex;
+      .game_code {
+        border: #ddd solid 2px;
+        max-height: 40vh;
+        min-height: 40vh;
+        overflow-Y: scroll;
+      }
+    }
+  }
+}

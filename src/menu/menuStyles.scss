@@ -1,0 +1,233 @@
+$gameBcg: #5C9099;
+
+@media only screen and (max-width: 600px) {
+  .menu {
+    &>p {
+      display:none;
+    }
+  }
+  .main_menu {
+    max-width: 100vw !important;
+    width: 90vw;
+
+    padding: 5vh 9vw;
+  }
+  .game_field {
+    border: $gameBcg solid 2px;
+    position: relative;
+  }
+  .game_tile {
+    width: 100%;
+    height: 100%;
+    border-radius: 3%;
+    font-size: 6vw;
+    transition: 
+            opacity 0s,
+            transform 0s;
+  }
+  /*.credits {
+    title {
+      animation: unset;
+      font-size: 80px;
+    }
+    a {
+      margin-top: 10px;
+    } 
+    * {
+      flex-direction: column;
+    }
+  }*/
+}
+
+@font-face {
+  font-family: "chlorinr";
+  src: url("assets/fonts/CHLORINR.TTF")
+}
+@font-face {
+  font-family: "worldofwater";
+  src: url("assets/fonts/worldofwater.ttf")
+}
+* {
+  font-family: Calibri;
+}
+h1 {
+  font-family: chlorinr;
+}
+main {
+  width: 100vw;
+  height: 100vh;  
+  color: white;
+  background: url("assets/pictures/background.png");
+
+  .returnButton {
+    position: absolute !important;
+    z-index: 2 !important;
+    border: none;
+    color: white;
+    background-color: unset;
+    font-size: 30px;
+    cursor: pointer;
+    top: 20px;
+    left: 20px;
+    padding-bottom: 5px;
+    transition: border-bottom 200ms !important;
+    border-bottom: #fff 2px solid; 
+    &:hover {
+      border-bottom: black 2px solid; 
+    }
+  }
+
+  .menu {
+    display: grid;
+    grid-template-columns: 20% 20% 60%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    width: 100vw;
+    height: 100vh;
+    background: url("assets/pictures/main-menu/title.png");
+    background-size: cover; 
+   * {
+     display: flex;
+   }
+    &>p {
+      align-items: center;
+      justify-content: center;
+    }
+    .column1 {
+      grid-column: 1;
+    }
+    .column2 {
+      grid-column: 2;
+      .column2_row {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 100%;
+        img {
+          margin-top: 5vh;
+          width: 8vw;
+          cursor: pointer;
+          filter: brightness(1);
+          transition: filter 300ms;
+          &:hover {
+            filter: brightness(1.5);
+          }
+        }
+      }
+    }
+    .column3 {
+      grid-column: 3;
+    }
+    .menu_column {
+      display: flex;
+      flex-direction: column;
+    }
+    .menu_description {
+      height: 100vh;
+      width: 100%;
+     align-items: center;
+     text-align: center;
+     font-size: 16px;
+
+     .menu_description_join {
+       font-size: 18px;
+       font-weight: bold;
+     }
+     p{
+        margin: 1vw 0;
+     }
+    }
+    .menu_game_title {
+      *{
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      p {
+        font-size: 14px;
+        margin-bottom: 30px;
+        font-family: "Calibri"
+      }
+      h1 {
+        text-transform: uppercase;
+        font-size: 50px;
+      }
+      h2 {
+        font-size: 30px;
+      }
+      h1, h2 {
+        text-transform: uppercase;
+        margin-right: 15px;
+        writing-mode: vertical-lr;
+        transform: rotate(180deg);
+        font-family: chlorinr; 
+        color: #ddd;
+        letter-spacing: 10px;
+      }
+    }
+    .menu_row {
+      display: flex;
+      align-items: center;
+    }
+   
+
+    .menu_list { 
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    
+      height: 100vh;
+      background: rgb(0,0,0);
+      background: linear-gradient(90deg, rgba(0,0,0,0) 10%, rgba(0,0,0,0.87718837535014) 29%);
+    
+      .menu_option {
+        cursor: pointer;
+        display:flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40vw;
+        max-width: 40vw;
+        margin-left: 15vw;
+        img {
+          width: 30vh;
+          height: 30vh;
+          margin: 1vh 5vw;
+        }
+        p {
+          font-size: 20px;
+          text-align: center;
+          margin-bottom: 20px;
+          word-wrap: none;
+          cursor: pointer; 
+          padding-bottom: 10px;
+          color: #ddd;
+          font-family: worldofwater;
+          
+          transition: border-bottom 200ms;
+        }
+        &:hover {
+          background-color: #333;
+        }
+      }
+    }
+  }
+}
+
+.hide_menu_routes {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0%;
+  transition: opacity 200ms;
+}
+.show_menu_routes {
+  position: relative;
+  pointer-events: all;
+  z-index: 1;
+  opacity: 100%;
+}
+
+button {
+  cursor: pointer;
+}
