@@ -1,13 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
+import reducers from "./redux/reducers";
+import { Provider } from "react-redux";
+import { createStore } from "redux";
+
 import App from "./AppCanvas";
 import Menu from "./menu/Menu";
 
-const rootElement = document.getElementById("root");
+const store = createStore(reducers);
 ReactDOM.render(
-  <React.StrictMode>
-    <Menu />
-  </React.StrictMode>,
-  rootElement
+  <Provider store={store}>
+    <React.StrictMode>
+      <Menu />
+    </React.StrictMode>
+  </Provider>,
+  document.getElementById("root")
 );

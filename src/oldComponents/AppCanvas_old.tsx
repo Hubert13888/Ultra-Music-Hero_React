@@ -2,20 +2,22 @@ import React from "react";
 import Classnames from "classnames";
 import Youtube from "react-player";
 import axios from "axios";
+
+import { connect } from "react-redux";
+import {
+  changeMenuPosition,
+  toggleGame,
+  setGameErrorGeneral,
+  setGameErrorJSON,
+  setGameErrorURL,
+  addCustomSongToList
+} from "./redux/actions";
+
+import { EndGameContext } from "./menu/Menu";
+
 import "./canvasGameStyles.scss";
 import { ExtendedTimer } from "./Timers";
 import "./gameLoadStyles.scss";
-
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faBars,
-  faHome,
-  faBinoculars,
-  faUserCircle,
-  faComments,
-  faMapMarkedAlt,
-  faMountain
-} from "@fortawesome/free-solid-svg-icons";
 
 const sliders = ["1", "2", "3", "4"],
   notes = ["U", "D", "L", "R"];
@@ -138,16 +140,17 @@ class Game extends React.Component<GameProps> {
   sliders = ["1", "2", "3", "4"];
   notes = ["U", "D", "L", "R"];
 
+  static contextType = EndGameContext;
+
   constructor(props: GameProps) {
     super(props);
 
-    this.test = props.test;
-
-    this.win = props.win;
     this.state.gameSettings = {
+      id: props.header.id,
       title: props.header.title,
       author: props.header.author,
       videoId: props.header.videoId,
+      gameColor: props.header.gameColor,
       tiles: props.notes,
       bpm: props.header.bpm,
       startOffset: props.header.startOffset ? props.header.startOffset : 0,
@@ -242,9 +245,10 @@ class Game extends React.Component<GameProps> {
   }
 
   moveGame(now) {
-    let stripeH = this.h(10) > this.w(15) ? this.w(15) : this.h(10);
-    let gamePadTop = this.h(50) - 2 * stripeH;
-    let canvas: HTMLCanvasElement = this.state.canvasRef.current;
+    const gameColor = this.state.gameSettings.gameColor;
+    const stripeH = this.h(10) > this.w(15) ? this.w(15) : this.h(10);
+    const gamePadTop = this.h(50) - 2 * stripeH;
+    const canvas: HTMLCanvasElement = this.state.canvasRef.current;
     if (!canvas) return;
     this.state.c.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -268,10 +272,53 @@ class Game extends React.Component<GameProps> {
         0
       ) {
         this.state.theEnd = true;
+        let oldPoints = this.state.points;
+
+        if (this.props.builtIn) {
+          let builtInLevels: any = JSON.parse(
+            localStorage.getItem("builtInLevels")
+          );
+          let gameId = this.state.gameSettings.id;
+
+          if (builtInLevels[gameId]) {
+            oldPoints = builtInLevels[gameId].oldPoints;
+          } else {
+            oldPoints = 0;
+          }
+          builtInLevels[gameId] = {
+            maxPoints: this.state.maxPoints,
+            oldPoints: this.state.points
+          };
+          localStorage.setItem("builtInLevels", JSON.stringify(builtInLevels));
+        } else if (!this.props.test) {
+          let customLevels: object | string;
+
+          customLevels = localStorage.getItem("customLevels");
+          if (!customLevels) customLevels = "{}";
+          customLevels = JSON.parse(customLevels);
+          let id = this.state.gameSettings.id;
+
+          if (!customLevels[id]) {
+            console.log("We have an error AppCanvas 308");
+            return;
+          }
+
+          oldPoints = customLevels[id].highPoints;
+          customLevels[id].maxPoints = this.state.maxPoints;
+
+          if (customLevels[id].highPoints < this.state.points) {
+            customLevels[id].highPoints = this.state.points;
+          }
+          localStorage.setItem("customLevels", JSON.stringify(customLevels));
+        }
         this.pause();
-        this.win({
+
+        this.context({
+          oldPoints,
           points: this.state.points,
-          maxPoints: this.state.maxPoints
+          maxPoints: this.state.maxPoints,
+          gameColor: this.state.gameSettings.gameColor,
+          builtIn: this.props.builtIn
         });
       } else requestAnimationFrame(this.moveGame.bind(this));
     } else {
@@ -326,6 +373,11 @@ class Game extends React.Component<GameProps> {
       //if (tile.pX === undefined) break;
       if (tile.pX < 0) continue;
       if (this.state[`m${tile.type}`] === "down" && tile.wasHit === false) {
+        if (tile.isActivated) {
+          tile.isActivated = false;
+          console.log(tile);
+          continue;
+        }
         let s = this.w(5 * 4);
         let a = s - this.w(5) - posW / 2,
           b = s + this.w(5) + posW / 2;
@@ -371,8 +423,7 @@ class Game extends React.Component<GameProps> {
         mD: prev.mD === "down" || prev.mD === "waitForUp" ? "waitForUp" : "up",
         m1: prev.m1 === "down" || prev.m1 === "waitForUp" ? "waitForUp" : "up",
         m2: prev.m2 === "down" || prev.m2 === "waitForUp" ? "waitForUp" : "up",
-        m3:
-          prev.m3 === "down" || prev.m3 === "waitingForUp" ? "waitForUp" : "up",
+        m3: prev.m3 === "down" || prev.m3 === "waitForUp" ? "waitForUp" : "up",
         m4: prev.m4 === "down" || prev.m4 === "waitForUp" ? "waitForUp" : "up"
       }));
     }
@@ -436,10 +487,7 @@ class Game extends React.Component<GameProps> {
             h: posW / 3
           });
 
-          if (
-            (tile.isActivated && this.state[`m${tile.type}`] === "waitForUp") ||
-            this.state[`m${tile.type}`] === "down"
-          ) {
+          if (tile.isActivated && this.state[`m${tile.type}`] === "waitForUp") {
             tile.wasActivated = true;
             let pointsToAdd = 20;
 
@@ -470,8 +518,10 @@ class Game extends React.Component<GameProps> {
           } else {
             if (tile.sliderFill > 0 && tile.posX) {
               tile.posX = undefined;
+              tile.isActivated = false;
             }
           }
+
           let sP = tile.sliderFillPercent ? tile.sliderFillPercent : 0;
 
           sliders.push({
@@ -584,22 +634,25 @@ class Game extends React.Component<GameProps> {
     }
 
     //Draw navbar
+    let barColors = "rgba(0,0,0,0.9)",
+      topBarH = this.h(15);
 
-    this.state.c.fillRect(0, 0, this.w(100), this.h(10));
+    this.state.c.fillStyle = barColors;
+    this.state.c.fillRect(0, 0, this.w(100), topBarH);
 
     let titleSize = 20;
-
-    this.state.c.font = `${titleSize}px Arial`;
+    let titleText = `${this.state.gameSettings.author} - ${this.state.gameSettings.title}`;
+    this.state.c.font = `${titleSize}px Ubuntu`;
     this.state.c.fillStyle = "#ffffff";
     this.state.c.fillText(
-      `${this.state.gameSettings.author} - ${this.state.gameSettings.title}`,
-      this.w(10),
-      this.h(5) + titleSize / 2
+      titleText,
+      this.w(50) - this.state.c.measureText(titleText).width / 2,
+      topBarH / 2 + titleSize / 2
     );
 
     //Draw information bar
 
-    this.state.c.fillStyle = "#000000";
+    this.state.c.fillStyle = barColors;
     this.state.c.fillRect(0, this.h(80), this.w(100), this.h(20));
 
     this.state.c.beginPath();
@@ -614,7 +667,7 @@ class Game extends React.Component<GameProps> {
       this.state.c.lineTo(this.w((i * 100) / 8), this.h(85));
     }
 
-    this.state.c.fillStyle = "rgb(0, 133, 6)";
+    this.state.c.fillStyle = "#aaaaaa";
     for (let i = 0; i < this.state.hitInRow % 9; i++) {
       this.state.c.fillRect(
         this.w((i * 100) / 8),
@@ -630,8 +683,7 @@ class Game extends React.Component<GameProps> {
     this.state.c.lineTo(this.w(100), this.h(87));
     this.state.c.stroke();
 
-    this.state.c.fillStyle = "rgb(0, 133, 6)";
-    this.state.c.filter = "invert(1)";
+    this.state.c.fillStyle = `rgb(${gameColor})`;
     this.state.c.fillRect(
       0,
       this.h(85),
@@ -643,11 +695,11 @@ class Game extends React.Component<GameProps> {
     let textW = this.state.c.measureText(text).width;
 
     let pointsSize = 32;
-    this.state.c.font = `${pointsSize}px Arial`;
+    this.state.c.font = `${pointsSize}px Ubuntu`;
     this.state.c.fillStyle = "rgb(255, 255, 255)";
     this.state.c.fillText(text, this.w(50) - textW / 2, this.h(95));
 
-    let percentOfPoints = Math.round(
+    let percentOfPoints = Math.floor(
       (this.state.points * 100) / this.state.maxPoints
     );
     this.state.c.fillText(
@@ -677,7 +729,7 @@ class Game extends React.Component<GameProps> {
     let a = s - this.w(5) - posW / 4,
       b = s + this.w(5) + posW / 4;
 
-    this.state.c.fillStyle = "rgba(0, 133, 6, 0.8)";
+    this.state.c.fillStyle = `rgba(${gameColor}, 0.8)`;
     this.state.c.fillRect(
       a,
       gamePadTop - this.h(2),
@@ -688,14 +740,14 @@ class Game extends React.Component<GameProps> {
 
     this.state.c.filter = "brightness(60%)";
     this.state.c.beginPath();
-    this.state.c.strokeStyle = "rgb(0, 133, 6)";
+    this.state.c.strokeStyle = `rgb(${gameColor})`;
     this.state.c.lineWidth = this.w(1);
     this.state.c.moveTo(s, gamePadTop - this.h(2));
     this.state.c.lineTo(s, gamePadTop + 4 * stripeH + this.h(2));
     this.state.c.stroke();
 
     this.state.c.beginPath();
-    this.state.c.strokeStyle = "rgb(0, 133, 6)";
+    this.state.c.strokeStyle = `rgb(${gameColor})`;
     this.state.c.lineWidth = this.w(0.2);
     this.state.c.moveTo(b, gamePadTop - this.h(2));
     this.state.c.lineTo(b, gamePadTop + 4 * stripeH + this.h(2));
@@ -704,7 +756,7 @@ class Game extends React.Component<GameProps> {
     this.state.c.filter = "none";
 
     this.state.c.beginPath();
-    this.state.c.strokeStyle = "rgb(0, 133, 6)";
+    this.state.c.strokeStyle = `rgb(${gameColor})`;
     this.state.c.lineWidth = this.w(0.2);
     this.state.c.moveTo(a, gamePadTop - this.h(2));
     this.state.c.lineTo(a, gamePadTop + 4 * stripeH + this.h(2));
@@ -885,6 +937,7 @@ class Game extends React.Component<GameProps> {
           videoId: data.header.videoId,
           title: data.header.title,
           author: data.header.author,
+          gameColor: data.header.gameColor,
           tiles: [...notesVal[2]],
           bpm: data.header.bpm,
           startOffset: data.header.startOffset ? data.header.startOffset : 0,
@@ -898,7 +951,7 @@ class Game extends React.Component<GameProps> {
           videoStartingOffset: data.header.videoStartingOffset
         }
       }));
-    } else console.log("errors: ", [...headerVal[0], ...notesVal[0]]);
+    }
   }
 
   restart() {
@@ -1015,38 +1068,53 @@ class Game extends React.Component<GameProps> {
       <>
         <div className="game">
           <canvas ref={this.state.canvasRef}></canvas>
-        </div>
+          <nav
+            style={{
+              left: this.props.test ? "15vw" : ""
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                this.restart();
+              }}
+            >
+              Restart
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                this.pause();
+              }}
+            >
+              Pause
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
 
-        <nav>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              this.restart();
-            }}
-          >
-            Restart
-          </button>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              this.pause();
-            }}
-          >
-            Pause
-          </button>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              document.documentElement.requestFullscreen();
-            }}
-          >
-            Fullscreen
-          </button>
-        </nav>
+                var docElm = document.documentElement;
+                if (!document.fullscreenElement) {
+                  if (docElm.requestFullscreen) {
+                    docElm.requestFullscreen();
+                  } else {
+                    alert("We are unable to turn fullscreen on");
+                  }
+                } else {
+                  if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                  }
+                }
+              }}
+            >
+              Fullscreen
+            </button>
+          </nav>
+        </div>
 
         <div className="player">
           <Youtube
-            url={`https://www.youtube.com/watch?v=${this.state.gameSettings.videoId}`}
+            url={`https://www.youtube.com/watch?v=${this.state.gameSettings.videoId}?vq=tiny`}
             playing={!this.state.paused}
             muted={this.state.muted}
             ref={this.state.playerRef}
@@ -1136,6 +1204,11 @@ function songHeaderValidate(song: SongJson) {
     alerts: string[] = [];
 
   try {
+    /*Id powinno zawierać tylko cyfry i litery*/
+    if (song.header.id === "" || typeof song.header.id !== "string")
+      errors.push(
+        "id: Your song should have a VERY unique ID, so it could be stored on a user's machine"
+      );
     if (song.header.author === "" || typeof song.header.author !== "string")
       errors.push("author: No (or wrong) author specified");
     if (song.header.title === "" || typeof song.header.title !== "string")
@@ -1144,6 +1217,30 @@ function songHeaderValidate(song: SongJson) {
       errors.push("bpm: No (or wrong) bpm specified");
     if (song.header.videoId === "" || typeof song.header.videoId !== "string")
       errors.push("videoId: You need to specify Youtube video's id (watch?v=)");
+    if (
+      song.header.gameColor === "" ||
+      typeof song.header.gameColor !== "string"
+    )
+      errors.push("gameColor: No color of the game provided");
+    else {
+      let a = song.header.gameColor;
+      try {
+        let b = a.split(",").map((c) => {
+          c = Number(c);
+          return 0 <= c && c <= 255;
+        });
+        if (b.length !== 3) {
+          throw Error("e");
+        }
+        for (let c of b)
+          if (!c) {
+            throw Error("e");
+          }
+      } catch (e) {
+        errors.push("gameColor: wrong RGB format");
+      }
+    }
+
     if (song.header.startOffset === undefined)
       alerts.push(
         "startOffset: You can specify the starting offset (delay between incoming notes and song start)"
@@ -1322,15 +1419,19 @@ function parseSongString(s) {
   return s;
 }
 
-export default class LoadGame extends React.Component {
+class LoadGame extends React.Component {
   state = {
     game: [],
+    focusedEditor: false,
     errorsToDisplay: [
       <li>Hi there. You can create your own level here!</li>,
       <li>
         Don't know the rules? They are simple! Just check:{" "}
-        <a href="https://github.com" target="_blank">
-          Link
+        <a
+          href="https://docs.google.com/document/d/1oKyTBU-aojl1oiIwFlt-_bRC-kbt0e5vly2871Otoxg/edit?usp=sharing"
+          target="_blank"
+        >
+          Click
         </a>{" "}
         for more info.
       </li>,
@@ -1349,63 +1450,122 @@ export default class LoadGame extends React.Component {
     gameRef: React.createRef()
   };
 
-  constructor(props) {
-    super(props);
-    this.json = props.jsonData;
-    this.test = props.test;
-    this.url = props.url;
-    this.errorHandler = props.error;
-    this.winHandler = props.win;
-  }
   async componentDidMount() {
-    let song = {};
-    //rozpocząć możliwość tworzenia nowych map
-    if (!this.test) {
-      if (this.url) {
-        try {
-          song = (await axios.get(this.url)).data;
-          if (!song || song === {} || typeof song !== "object")
-            return this.errorHandler("0");
-        } catch (e) {
-          return this.errorHandler("0");
-        }
-      } else if (this.json) {
-        try {
-          song = JSON.parse(this.json);
-        } catch (err) {
-          return this.errorHandler(err);
-        }
-      } else return this.errorHandler("2");
+    let codeEditor = document.getElementsByClassName("codeEditor")[0];
+    let savedCode = localStorage.getItem("savedCode");
+    if (codeEditor && savedCode) {
+      codeEditor.innerHTML = savedCode;
+    }
 
-      let headerVal = songHeaderValidate(song);
-      let notesVal = songNotesValidation(song);
-      if (!headerVal[0][0] && !notesVal[0][0]) {
-        if (headerVal[1][0] || notesVal[1][0]) {
-          this.errorHandler([...headerVal[1], ...notesVal[0]]);
+    try {
+      let song = {};
+      if (!this.props.test) {
+        if (this.props.url) {
+          try {
+            song = (await axios.get(this.props.url)).data;
+            if (!song || song === {} || typeof song !== "object") {
+              throw new Error(
+                "Provided URL does not exist or gives an empty data object"
+              );
+            }
+          } catch (e) {
+            throw new Error("Provided URL causes an error in the request");
+          }
+        } else if (this.props.json) {
+          try {
+            song = JSON.parse(this.props.json);
+          } catch (err) {
+            throw new Error(
+              "Cannot parse your code to JSON (wrong or no data provided)"
+            );
+          }
+        } else {
+          throw new Error("No data specified");
         }
-        this.setState({
-          game: [
-            <Game
-              header={song.header}
-              notes={notesVal[2]}
-              devStartingHexNote={0}
-              win={(data) => {
-                this.winHandler({
-                  ...data,
-                  title: song.header.title,
-                  author: song.header.author,
-                  notesAuthor: song.header.notesAuthor
-                });
-              }}
-            />
-          ]
-        });
-      } else this.errorHandler([...headerVal[0], ...notesVal[0]]);
+
+        if (typeof song.header !== "object") {
+          throw new Error("Received JSON data contains no 'header' field");
+        }
+
+        let headerVal = songHeaderValidate(song);
+
+        let customLevels: any,
+          customLevelsKeys: string[] = [];
+        if (!this.props.builtIn) {
+          customLevels = localStorage.getItem("customLevels");
+          if (!customLevels) customLevels = "{}";
+          customLevels = JSON.parse(customLevels);
+          customLevelsKeys = Object.keys(customLevels);
+
+          if (customLevelsKeys.includes(song.header.id)) {
+            song = JSON.parse(customLevels[song.header.id].code);
+          }
+        }
+        let notesVal;
+        try {
+          notesVal = songNotesValidation(song);
+        } catch (err) {
+          throw new Error("Received JSON data contains no 'notes' array");
+        }
+        if (!headerVal[0][0] && !notesVal[0][0]) {
+          if (headerVal[1][0] || notesVal[1][0]) {
+            throw new Error([...headerVal[1], ...notesVal[0]][0]);
+          }
+          this.props.changeMenuPosition("new-game");
+
+          if (!this.props.builtIn) {
+            if (!customLevelsKeys.includes(song.header.id)) {
+              customLevels[song.header.id] = {
+                code: JSON.stringify(song),
+                highPoints: 0,
+                maxPoints: 0
+              };
+              localStorage.setItem(
+                "customLevels",
+                JSON.stringify(customLevels)
+              );
+              this.props.addCustomSongToList({
+                id: song.header.id,
+                code: JSON.stringify(song),
+                highPoints: 0,
+                maxPoints: 0
+              });
+            }
+          }
+
+          this.setState({
+            game: [
+              <Game
+                header={song.header}
+                notes={notesVal[2]}
+                devStartingHexNote={0}
+                builtIn={this.props.builtIn && song.header.id}
+              />
+            ]
+          });
+        } else {
+          throw new Error("Some fields in 'header' object are missing");
+        }
+      }
+    } catch (err) {
+      let msg = err.message;
+      if (typeof msg !== "string") msg = "Unexpected Error";
+      switch (this.props.gameData[2].type) {
+        case "URL":
+          this.props.setGameErrorURL(msg);
+          break;
+        case "JSON":
+          this.props.setGameErrorJSON(msg);
+          break;
+        default:
+          this.props.setGameErrorGeneral(msg);
+          break;
+      }
+      this.props.toggleGame();
     }
   }
   render() {
-    if (this.test) {
-      let parser = new DOMParser();
+    if (this.props.test) {
       return (
         <div className="gameLoad">
           <div
@@ -1446,33 +1606,56 @@ export default class LoadGame extends React.Component {
           <div className="secondColumn">
             <div
               contentEditable="true"
-              className="codeEditor"
+              style={{
+                overflow: this.state.focusedEditor ? "scroll" : "hidden"
+              }}
+              className={Classnames({
+                codeEditor: true,
+                game_code: true
+              })}
               onPaste={(e) => {
                 e.preventDefault();
                 var text = e.clipboardData.getData("text/plain");
                 document.execCommand("insertHTML", false, text);
               }}
+              onFocus={(e) => {
+                this.setState({
+                  focusedEditor: true
+                });
+              }}
+              onBlur={(e) => {
+                this.setState({
+                  focusedEditor: false
+                });
+              }}
               onKeyDown={(e) => {
                 if (e.keyCode === 9) {
-                  document.execCommand("insertHTML", false, "&#009");
+                  document.execCommand("insertHTML", false, "   ");
                   e.preventDefault();
                 }
+              }}
+              onKeyUp={(e) => {
+                localStorage.setItem("savedCode", e.target.innerHTML);
               }}
               onInput={(e) => {
                 this.setState({
                   writtenCode: e.target.textContent
                 });
               }}
-              tabindex="0"
             ></div>
 
             <button
               onClick={(e) => {
+                if (!this.state.writtenCode[0]) {
+                  this.state.writtenCode = localStorage.getItem("savedCode");
+                }
+
                 this.setState({
                   transErrorMsg: true
                 });
                 let compiledCode = {},
                   error = false;
+                console.log(this.state.writtenCode, !this.state.writtenCode[0]);
                 try {
                   compiledCode = JSON.parse(
                     parseSongString(this.state.writtenCode.trim())
@@ -1506,6 +1689,7 @@ export default class LoadGame extends React.Component {
                               <Game
                                 header={compiledCode.header}
                                 notes={notesVal[2]}
+                                test={true}
                                 devStartingHexNote={
                                   compiledCode.header.devStartingTact
                                     ? countStartingHexNote(
@@ -1514,9 +1698,6 @@ export default class LoadGame extends React.Component {
                                       )
                                     : 0
                                 }
-                                win={(data) => {
-                                  console.log("Win!");
-                                }}
                                 ref={this.state.gameRef}
                               />
                             ]
@@ -1553,3 +1734,17 @@ export default class LoadGame extends React.Component {
     }
   }
 }
+
+const mapStateToProps = (state) => ({
+  menuPosition: state.menuPosition,
+  gameData: state.gameData
+});
+
+export default connect(mapStateToProps, {
+  changeMenuPosition,
+  toggleGame,
+  setGameErrorGeneral,
+  setGameErrorJSON,
+  setGameErrorURL,
+  addCustomSongToList
+})(LoadGame);

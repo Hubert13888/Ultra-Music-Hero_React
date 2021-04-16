@@ -4,7 +4,7 @@
   height: 100vh;
   .firstColumn{
     grid-column: 1;
-    width: 70vw;
+    width: 65vw;
   }
   .secondColumn {
     display: flex;
@@ -13,21 +13,37 @@
     flex-direction: column;
     
     grid-column: 2;
-    width: 30vw;
+    width: 35vw;
 
     .codeEditor {
-      width: 90%;
-      height: 80vh;
-      background-color: white;
-      color: black;
+      overflow-x: hidden;
+      resize: none;
+      box-sizing: border-box;
+      width: 32vw;
+      height: 60vh;
+      background-color: rgba(0,0,0,0.8);
+      color: white;
+      border: white solid 1px;
+      padding: 0.5vw;
+      padding-bottom: 0;
       white-space: pre-wrap;
       overflow: scroll;
       position: relative;
       z-index: 1;
     }
-    button {
-      position: relative;
-      z-index: 1;
+    .codeEditorTop {
+      height:20vh;
+    }
+    .action_buttons {
+      margin-top: 1vw;
+      .load_button {
+        margin-right: 2vw;
+      }
+      button {
+        margin-top: 5px;
+        position: relative;
+        z-index: 1;
+      }
     }
   }
   .errors {
@@ -45,14 +61,15 @@
       display: grid;
       grid-template-rows: 50px auto;
       max-width: 35vw;
-      min-width: 35vw;
-      margin-right: 5vw;
       padding: 5vh 0;
       background-color: #111;
       h2 {
         grid-row: 1;
         grid-column: 1;
         text-align: center;
+        color: #C00101;
+        font-family: chlorinr;
+        letter-spacing: 2px;
       }
       ul {
         grid-row: 2;
@@ -62,9 +79,19 @@
         justify-content: center;
         line-height: 7vh;
         height: 100%;
+        padding: 0 3vw;
         li {
-          list-style-type: "▶";
+          list-style-type: none;
         }
+      }
+      ul li:before {
+        content: "▶";
+        margin-right: 2vw;
+        color: #C00101; 
+        font-weight: bold; 
+        display: inline-block;
+        width: 1em;
+        margin-left: -1em;
       }
     }
   }
@@ -74,8 +101,13 @@
   }
   .showErrors {
     position: absolute;
+    z-index: 5;
     bottom: 10vh;
-    left: 1vw;
+    left: 5vw;
+    bottom: 3vh;
+  }
+  .instrButton {
+    left: 13vw;
   }
   .hide_showErrors {
     pointer-events: none;

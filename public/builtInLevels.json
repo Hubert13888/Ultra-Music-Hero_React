@@ -1,0 +1,23 @@
+[
+  {
+    "id": "TheFatRat-Monody",
+    "yt": "B7xai5u_tnk",
+    "author": "TheFatRat",
+    "title": "Monody",
+    "path": "/songs/TheFatRat-Monody.json"
+  },
+  {
+    "id": "Gigi_dAgostino-The_Riddle",
+    "yt": "cvvd-9azD1M",
+    "author": "Gigi d'Agostino",
+    "title": "The Riddle",
+    "path": "/songs/Gigi_dAgostino-The_Riddle.json"
+  },
+  {
+    "id": "mY1015H3r3",
+    "yt": "cvvd-9azD1M",
+    "author": "test",
+    "title": "test",
+    "path": "/songs/song_test.json"
+  }
+]

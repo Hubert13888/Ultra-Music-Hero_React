@@ -8,12 +8,25 @@ body {
 *:fullscreen, *:-webkit-full-screen, *:-moz-full-screen {
   background-color: rgba(255,255,255,0);
 }
-nav{
-  position: absolute;
-  top: 5vh;
-  right: 5vw;
-  transform: translateY(-50%);
-  z-index: 9;
+.game {
+  position: relative;
+  top: 0;
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  nav{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: absolute;
+    width: 11vw;
+    height: 15vh;
+    top: 0;
+    right: 5vw;
+    z-index: 5;
+  }
 }
 
 .player{
@@ -27,8 +40,3 @@ nav{
   min-height: 100vh !important;
 }
 
-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-}

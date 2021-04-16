@@ -1,5 +1,10 @@
 import React from "react";
-import Game from "../AppCanvas";
+import "./menuStyles.scss";
+
+import { connect } from "react-redux";
+import { changeMenuPosition, toggleGame } from "../redux/actions";
+
+import LoadGame from "../LoadGame";
 import ClassNames from "classnames";
 import PlayGame from "./PlayGame";
 import Credits from "./Credits";
@@ -7,130 +12,65 @@ import EndGame from "./EndGame";
 
 import Settings from "./Settings";
 import Instructions from "./Instructions";
-import "./menuStyles.scss";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 
 interface StateMenu {
-  menuPosition: string;
-  game: Game[];
-  lastGameData?: {
-    url: string;
-    json: string;
-  };
-  inputs: {
-    width: number;
-    height: number;
-    content_of_new_1: number;
-    content_of_new_2: number;
-    number_of_new: number;
-    winning_tile: number;
-  };
-  errors: string[];
+  endGame: any;
 }
 
-export default class Home extends React.Component {
+export const EndGameContext = React.createContext((data) => {
+  console.log(data);
+});
+
+class Home extends React.Component {
   state: StateMenu = {
-    menuPosition: "settings",
-    game: [],
-    endGame: [],
-    inputs: {
-      width: 4,
-      height: 4,
-      content_of_new_1: 4,
-      content_of_new_2: 2,
-      number_of_new: 1,
-      winning_tile: 2048
-    },
-    errors: []
+    endGame: <></>
   };
 
-  deleteGames() {
-    this.setState((prev: StateMenu) => ({
-      game: [
-        ...prev.game.map(() => {
-          return void 0;
-        })
-      ]
-    }));
-  }
-  createGame(url, json, test = false) {
-    this.setState({
-      lastGameData: {
-        url,
-        json
-      }
-    });
-    if (json) {
-      json = json
-        .replace(/\\n/g, "")
-        .replace(/\\'/g, "")
-        .replace(/\\"/g, "")
-        .replace(/\\&/g, "")
-        .replace(/\\r/g, "")
-        .replace(/\\t/g, "")
-        .replace(/\\b/g, "")
-        .replace(/\\f/g, "");
-      json = json.replace(/[\u0000-\u0019]+/g, "");
-      json = json.trim();
-    }
-    this.setState((prev: StateMenu) => ({
-      game: [
-        ...prev.game,
-        <Game
-          url={url}
-          jsonData={json}
-          test={test}
-          error={(error) => {
-            alert(error);
-          }}
-          win={(data) => {
-            this.setState({ menuPosition: "end-game" });
-            this.createGameEnd(data);
-          }}
-        />
-      ]
-    }));
-  }
   createGameEnd(data) {
     this.setState((prev) => ({
-      endGame: [
-        ...prev.endGame,
-        <EndGame
-          data={data}
-          lastGameData={this.state.lastGameData}
-          createGame={this.createGame.bind(this)}
-          changeMenuPosition={(pos) => {
-            this.setState({ menuPosition: pos });
-          }}
-        />
-      ]
+      endGame: <EndGame {...data} />
     }));
   }
   deleteGameEnd() {
     this.setState((prev: StateMenu) => ({
-      endGame: []
+      endGame: <></>
     }));
   }
 
   render() {
+    const menuPosition = this.props.menuPosition;
+    const gameData = this.props.gameData;
+
     return (
       <main>
-        <button
+        <div
           className={ClassNames({
             returnButton: true,
             back: true,
             hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition !== "main-menu"
+            show_menu_routes: menuPosition !== "main-menu"
           })}
-          onClick={() => this.setState({ menuPosition: "main-menu" })}
+          onClick={() => {
+            const routeMap = {
+              "new-game": "song-list",
+              "end-game": "song-list"
+            };
+            this.props.changeMenuPosition(
+              routeMap[menuPosition] ? routeMap[menuPosition] : "main-menu"
+            );
+          }}
         >
-          Back
-        </button>
+          <FontAwesomeIcon icon={faArrowLeft} />
+        </div>
 
         <div
           className={ClassNames({
             menu: true,
             hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "main-menu"
+            show_menu_routes: menuPosition === "main-menu"
           })}
         >
           <>
@@ -143,28 +83,51 @@ export default class Home extends React.Component {
             </div>
             <div className="menu_column menu_description column2">
               <div className="menu_row column2_row">
-                <img
-                  src="/assets/pictures/main-menu/information.png"
-                  alt=""
-                  onClick={() => {
-                    this.setState({ menuPosition: "instructions" });
-                  }}
-                />
+                <div className="column2_1">
+                  <img
+                    src="/assets/pictures/main-menu/information.png"
+                    alt=""
+                    onClick={() => {
+                      this.props.changeMenuPosition("instructions");
+                    }}
+                  />
 
-                <img
-                  src="/assets/pictures/main-menu/settings.png"
-                  alt=""
-                  onClick={() => {
-                    this.setState({ menuPosition: "settings" });
-                  }}
-                />
+                  <img
+                    src="/assets/pictures/main-menu/settings.png"
+                    alt=""
+                    onClick={() => {
+                      this.props.changeMenuPosition("settings");
+                    }}
+                  />
+                </div>
+                <div className="column2_2">
+                  <img
+                    src="/assets/pictures/main-menu/fullscreen.png"
+                    className="fullscreen"
+                    alt=""
+                    onClick={() => {
+                      var docElm = document.documentElement;
+                      if (!document.fullscreenElement) {
+                        if (docElm.requestFullscreen) {
+                          docElm.requestFullscreen();
+                        } else {
+                          alert("We are unable to turn fullscreen on");
+                        }
+                      } else {
+                        if (document.exitFullscreen) {
+                          document.exitFullscreen();
+                        }
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
             <div className="menu_list menu_column column3">
               <div
                 className="menu_option"
                 onClick={() => {
-                  this.setState({ menuPosition: "song-list" });
+                  this.props.changeMenuPosition("song-list");
                 }}
               >
                 <img src="/assets/pictures/main-menu/song-list.png" alt="" />
@@ -174,7 +137,7 @@ export default class Home extends React.Component {
               <div
                 className="menu_option"
                 onClick={() => {
-                  this.setState({ menuPosition: "create-song" });
+                  this.props.changeMenuPosition("create-song");
                 }}
               >
                 <p>Create a song</p>
@@ -183,11 +146,9 @@ export default class Home extends React.Component {
 
               <div
                 className="menu_option"
-                onClick={() =>
-                  this.setState({
-                    menuPosition: "credits"
-                  })
-                }
+                onClick={() => {
+                  this.props.changeMenuPosition("credits");
+                }}
               >
                 <img src="/assets/pictures/main-menu/credits.png" alt="" />
                 <p>Credits</p>
@@ -200,11 +161,56 @@ export default class Home extends React.Component {
         <div
           className={ClassNames({
             hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "end-game",
+            show_menu_routes: menuPosition === "song-list",
+            selectSong: true
+          })}
+        >
+          <PlayGame />
+        </div>
+
+        <div
+          className={ClassNames({
+            hide_menu_routes: true,
+            show_menu_routes: menuPosition === "create-song",
+            createSong: true
+          })}
+        >
+          <EndGameContext.Provider
+            value={(data) => {
+              console.log("Tested game to to the end");
+            }}
+          >
+            {menuPosition === "create-song" && <LoadGame test={true} />}
+          </EndGameContext.Provider>
+        </div>
+
+        <div
+          className={ClassNames({
+            hide_menu_routes: true,
+            show_menu_routes: menuPosition === "new-game"
+          })}
+          onTransitionEnd={() => {
+            if (gameData[1] && menuPosition !== "new-game")
+              this.props.toggleGame();
+          }}
+        >
+          <EndGameContext.Provider
+            value={(data) => {
+              this.createGameEnd(data);
+            }}
+          >
+            {gameData[1] ? gameData[0] : <></>}
+          </EndGameContext.Provider>
+        </div>
+
+        <div
+          className={ClassNames({
+            hide_menu_routes: true,
+            show_menu_routes: menuPosition === "end-game",
             gameEnd: true
           })}
           onTransitionEnd={() => {
-            if (this.state.menuPosition !== "end-game") this.deleteGameEnd();
+            if (menuPosition !== "end-game") this.deleteGameEnd();
           }}
         >
           {this.state.endGame}
@@ -212,75 +218,32 @@ export default class Home extends React.Component {
 
         <div
           className={ClassNames({
-            hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "song-list",
-            selectSong: true
-          })}
-          onTransitionEnd={() => {}}
-        >
-          <PlayGame
-            changeMenuPosition={(pos, data) => {
-              this.createGame(data.url, data.json);
-              this.setState({ menuPosition: pos });
-            }}
-          />
-        </div>
-
-        <div
-          className={ClassNames({
-            hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "create-song",
-            createSong: true
-          })}
-          onTransitionEnd={() => {}}
-        >
-          <Game test={true} />
-        </div>
-
-        <div
-          className={ClassNames({
-            hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "new-game"
-          })}
-          onTransitionEnd={() => {
-            if (this.state.menuPosition !== "new-game") this.deleteGames();
-          }}
-        >
-          {this.state.game}
-        </div>
-
-        <div
-          className={ClassNames({
             credits: true,
             hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "credits"
+            show_menu_routes: menuPosition === "credits"
           })}
         >
-          {this.state.menuPosition === "credits" ? <Credits /> : <></>}
+          {menuPosition === "credits" ? <Credits /> : <></>}
         </div>
 
         <div
           className={ClassNames({
             settings: true,
             hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "settings"
+            show_menu_routes: menuPosition === "settings"
           })}
         >
-          {this.state.menuPosition === "settings" ? <Settings /> : <></>}
+          {menuPosition === "settings" ? <Settings /> : <></>}
         </div>
 
         <div
           className={ClassNames({
             instructions: true,
             hide_menu_routes: true,
-            show_menu_routes: this.state.menuPosition === "instructions"
+            show_menu_routes: menuPosition === "instructions"
           })}
         >
-          {this.state.menuPosition === "instructions" ? (
-            <Instructions />
-          ) : (
-            <></>
-          )}
+          {menuPosition === "instructions" ? <Instructions /> : <></>}
         </div>
       </main>
     );
@@ -295,3 +258,11 @@ export default class Home extends React.Component {
       });
   }
 }
+
+const mapStateToProps = (state) => ({
+  menuPosition: state.menuPosition,
+  gameData: state.gameData
+});
+export default connect(mapStateToProps, { changeMenuPosition, toggleGame })(
+  Home
+);

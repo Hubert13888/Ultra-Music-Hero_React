@@ -1,7 +1,14 @@
 import React from "react";
+import { connect } from "react-redux";
+import {
+  toggleGame,
+  changeMenuPosition,
+  updateCustomSongs,
+  updateBuiltInSongs
+} from "../redux/actions";
 import "./endGameStyles.scss";
 
-export default class EndGame extends React.Component {
+class EndGame extends React.Component {
   points = 0;
   state = {
     pointsInBar: 0,
@@ -10,29 +17,23 @@ export default class EndGame extends React.Component {
   constructor(props) {
     super(props);
 
-    this.changeMenuPosition = props.changeMenuPosition;
-    this.lastGameData = props.lastGameData;
-    this.createGame = props.createGame;
-    this.points = props.data.points;
-    this.maxPoints = props.data.maxPoints;
-    this.title = props.data.title;
-    this.author = props.data.author;
-    this.notesAuthor = props.data.notesAuthor;
+    props.changeMenuPosition("end-game");
+    props.builtIn ? props.updateBuiltInSongs() : props.updateCustomSongs();
   }
   componentDidMount() {
-    let pointsPerRound = this.maxPoints / 200;
+    let pointsPerRound = this.props.maxPoints / 200;
     let a = setInterval(() => {
-      if (this.state.pointsInBar + pointsPerRound < this.points) {
+      if (this.state.pointsInBar + pointsPerRound < this.props.points) {
         this.setState((prev) => ({
           pointsInBar: prev.pointsInBar + pointsPerRound,
-          transformBar: `translateX(${
-            ((prev.pointsInBar + pointsPerRound) * 100) / this.maxPoints
-          }%)`
+          transformBar: `${
+            ((prev.pointsInBar + pointsPerRound) * 100) / this.props.maxPoints
+          }%`
         }));
       } else {
         this.setState((prev) => ({
-          pointsInBar: this.points,
-          transformBar: `translateX(${(this.points * 100) / this.maxPoints}%)`
+          pointsInBar: this.props.points,
+          transformBar: `${(this.props.points * 100) / this.props.maxPoints}%`
         }));
         clearInterval(a);
       }
@@ -41,47 +42,113 @@ export default class EndGame extends React.Component {
   render() {
     return (
       <>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          .progressBar_wrapper > p:before {
+            border-bottom: 5vh solid rgb(${this.props.gameColor});
+            border-left: 5vh solid transparent;
+          }
+          `
+          }}
+        ></style>
         <div className="firstColumn">
           <h1>You made it!</h1>
-          <div className="progressBar">
-            <div
-              className="bar"
+          <div className="progressBar_wrapper">
+            <p
+              className="prograssBar_oldPoints"
               style={{
-                transform: this.state.transformBar
+                backgroundColor: `rgb(${this.props.gameColor})`,
+                left: `${(this.props.oldPoints * 100) / this.props.maxPoints}%`
               }}
             >
-              <p>{Math.floor(this.state.pointsInBar)}</p>
+              {this.props.oldPoints}
+            </p>
+            <p
+              className="prograssBar_pointsCounter"
+              style={{
+                left: `${this.state.transformBar}`,
+                backgroundColor: `rgb(${this.props.gameColor})`
+              }}
+            >
+              {Math.floor(this.state.pointsInBar)}
+            </p>
+            <p className="prograssBar_maxPoints">
+              {Math.floor(this.props.maxPoints)}
+            </p>
+
+            <div
+              className="progressBar"
+              style={{
+                border: `rgb(${this.props.gameColor}) 2px solid`
+              }}
+            >
+              <div
+                className="oldPoints_bar bar"
+                style={{
+                  background: `linear-gradient(180deg, rgb(${this.props.gameColor}) 4%, rgba(${this.props.gameColor}, 0.75) 50%, rgb(${this.props.gameColor}) 96%)`,
+                  borderRight: `solid 5px ${this.props.gameColor}`,
+                  transform: `translateX(${
+                    (this.props.oldPoints * 100) / this.props.maxPoints
+                  }%)`
+                }}
+              ></div>
+              <div
+                className="currentPoints_bar bar"
+                style={{
+                  background: `#ddd`,
+                  borderRight: `solid 5px ${this.props.gameColor}`,
+                  transform: `translateX(${this.state.transformBar})`
+                }}
+              ></div>
+              <div
+                className="bar"
+                style={{
+                  background: `linear-gradient(180deg, rgb(${this.props.gameColor}) 4%, rgba(${this.props.gameColor}, 0.75) 50%, rgb(${this.props.gameColor}) 96%)`,
+                  borderRight: `solid 5px ${this.props.gameColor}`,
+                  transform: `translateX(${this.state.transformBar})`
+                }}
+              ></div>
             </div>
-            <p>{Math.floor(this.maxPoints)}</p>
           </div>
-          <h2>{Math.floor((this.points * 100) / this.maxPoints)}%</h2>
+          <div className="scoreWrapper">
+            <h2>You've got:</h2>
+            <h2>
+              {Math.floor((this.props.points * 100) / this.props.maxPoints)}%
+            </h2>
+          </div>
+          <div className="prevScoreWrapper">
+            <p>Last high score:</p>
+            <p>
+              {Math.floor((this.props.oldPoints * 100) / this.props.maxPoints)}%
+            </p>
+          </div>
         </div>
         <div className="secondColumn">
-          <div className="menu">
+          <div className="end_menu">
             <div
-              className="option"
+              className="end_menu_option"
               onClick={(e) => {
-                this.createGame(this.lastGameData.url, this.lastGameData.json);
-                this.changeMenuPosition("new-game");
+                this.props.toggleGame();
               }}
             >
-              Once more!
+              <p>Once more!</p>
             </div>
             <div
-              className="option"
+              className="end_menu_option"
               onClick={(e) => {
-                this.changeMenuPosition("song-list");
+                this.props.changeMenuPosition("song-list");
               }}
             >
-              Song select
+              <p>Song select</p>
             </div>
             <div
-              className="option"
+              className="end_menu_option"
               onClick={(e) => {
                 alert("This option is currently unavailable :c");
               }}
             >
-              More games
+              <p>More games</p>
             </div>
           </div>
         </div>
@@ -89,3 +156,14 @@ export default class EndGame extends React.Component {
     );
   }
 }
+
+const mapStateToProps = (state) => ({
+  menuPosition: state.menuPosition
+});
+
+export default connect(mapStateToProps, {
+  toggleGame,
+  changeMenuPosition,
+  updateCustomSongs,
+  updateBuiltInSongs
+})(EndGame);
