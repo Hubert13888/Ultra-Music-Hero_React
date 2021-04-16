@@ -1,2 +1,2 @@
-# SCGMD_React
+Ultra Music Hero
 Created with CodeSandbox
