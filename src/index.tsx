@@ -5,7 +5,6 @@ import reducers from "./redux/reducers";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
 
-import App from "./AppCanvas";
 import Menu from "./menu/Menu";
 
 const store = createStore(reducers);

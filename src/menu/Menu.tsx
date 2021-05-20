@@ -20,9 +20,7 @@ interface StateMenu {
   endGame: any;
 }
 
-export const EndGameContext = React.createContext((data) => {
-  console.log(data);
-});
+export const EndGameContext = React.createContext((data) => {});
 
 class Home extends React.Component {
   state: StateMenu = {

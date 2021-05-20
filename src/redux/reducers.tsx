@@ -48,6 +48,21 @@ const gameData = (state = [<></>, false, {}], action) => {
   return state;
 };
 
+const gameSettings = (
+  state = {
+    music: 100
+  },
+  action
+) => {
+  let lastState = { ...state };
+  switch (action.type) {
+    case "CHANGEMUSICVOLUME":
+      lastState.music = action.payload;
+      break;
+  }
+  return lastState;
+};
+
 const gameErrors = (state = ["", "", ""], action) => {
   let lastState = [...state];
   switch (action.type) {
@@ -106,13 +121,21 @@ const builtInSongList = (
   action
 ) => {
   if (action.type === "UPDATE_BI") {
-    let customLevels: any = JSON.parse(localStorage.getItem("builtInLevels")),
+    let builtInLevels: any = JSON.parse(localStorage.getItem("builtInLevels")),
       levels = [];
-    for (let level in customLevels) {
+    for (let level of builtInLevelsJSON) {
       levels.push({
-        id: level,
-        ...customLevels[level]
+        id: level.id,
+        ...(builtInLevels?.[level.id] || { oldPoints: 0, maxPoints: 0 })
       });
+
+      if (!builtInLevels[level.id]) {
+        builtInLevels[level.id] = {
+          oldPoints: 0,
+          maxPoints: 0
+        };
+        localStorage.setItem("builtInLevels", JSON.stringify(builtInLevels));
+      }
     }
     return levels;
   }
@@ -163,6 +186,7 @@ const combinedReducers = combineReducers({
   gameData: gameData,
   gameErrors: gameErrors,
   customSongList: customSongList,
-  builtInSongList: builtInSongList
+  builtInSongList: builtInSongList,
+  gameSettings: gameSettings
 });
 export default combinedReducers;

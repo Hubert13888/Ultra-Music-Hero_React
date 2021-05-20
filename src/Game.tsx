@@ -11,17 +11,31 @@ import {
   getTactInfo
 } from "./GameFunctions";
 
+import { connect } from "react-redux";
+import { changeMusicVolume } from "./redux/actions";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import Slider from "@material-ui/core/Slider";
+import { withStyles } from "@material-ui/core/styles";
 import {
   faSyncAlt,
   faPause,
   faPlay,
-  faExpand
+  faExpand,
+  faTimes,
+  faCog
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./canvasGameStyles.scss";
 import { ExtendedTimer } from "./Timers";
 import "./gameLoadStyles.scss";
+
+const StyledSlider = withStyles({
+  root: {
+    color: "#C00101",
+    width: "50%"
+  }
+})(Slider);
 
 interface SongJson {
   header: {
@@ -107,7 +121,7 @@ interface GameSettings {
   videoStartingOffset: number;
 }
 
-export default class Game extends React.Component<GameProps> {
+class Game extends React.Component<GameProps> {
   state: GameState = {
     fields: [],
     tiles: [],
@@ -127,7 +141,10 @@ export default class Game extends React.Component<GameProps> {
     paused: false,
     pausedTiles: true,
     muted: true,
-    afterUnpause: false
+    afterUnpause: false,
+
+    settingsShow: false,
+    musicLevel: 50
   };
 
   compareLetters = [
@@ -225,6 +242,21 @@ export default class Game extends React.Component<GameProps> {
     };
   }
 
+  toggleFullscreen() {
+    let docElm = document.documentElement;
+    if (!document.fullscreenElement) {
+      if (docElm.requestFullscreen) {
+        docElm.requestFullscreen();
+      } else {
+        alert("We are unable to turn fullscreen on");
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
   countMultiplier(amount: number) {
     let multiplier = 1;
     if (amount >= 9) multiplier = 2;
@@ -295,7 +327,8 @@ export default class Game extends React.Component<GameProps> {
           }
           builtInLevels[gameId] = {
             maxPoints: this.state.maxPoints,
-            oldPoints: this.state.points
+            oldPoints:
+              this.state.points > oldPoints ? this.state.points : oldPoints
           };
           localStorage.setItem("builtInLevels", JSON.stringify(builtInLevels));
         } else if (!this.props.test) {
@@ -1063,45 +1096,47 @@ export default class Game extends React.Component<GameProps> {
   }
 
   restart() {
-    if (this.state.theEnd) {
-      requestAnimationFrame(this.moveGame.bind(this));
+    if (this.state.playerRef.current) {
+      if (this.state.theEnd) {
+        requestAnimationFrame(this.moveGame.bind(this));
+        this.setState({
+          theEnd: false
+        });
+      }
+
+      this.state.playerRef.current.seekTo(
+        this.state.gameSettings.initVideoState +
+          (15 * this.state.gameSettings.devStartingHexNote) /
+            this.state.gameSettings.bpm
+      );
+
+      if (this.state.videoPlayTimer) {
+        if (this.state.videoPlayTimer.pos === "run")
+          this.state.videoPlayTimer.pause();
+      }
+      if (this.state.newGameTimer) {
+        if (this.state.newGameTimer.pos === "run")
+          this.state.newGameTimer.pause();
+      }
+
       this.setState({
-        theEnd: false
+        tiles: [],
+        muted: true,
+        paused: false,
+        pausedTiles: true,
+        initializedVideo: false,
+        newGameTimer: null,
+        videoPlayTimer: null,
+        gameStarted: false,
+        time:
+          (15 * this.state.gameSettings.devStartingHexNote) /
+          this.state.gameSettings.bpm,
+        prevTime: 0,
+        currentHexNote: 0,
+        hitInRow: 0,
+        multiplier: 1
       });
     }
-
-    this.state.playerRef.current.seekTo(
-      this.state.gameSettings.initVideoState +
-        (15 * this.state.gameSettings.devStartingHexNote) /
-          this.state.gameSettings.bpm
-    );
-
-    if (this.state.videoPlayTimer) {
-      if (this.state.videoPlayTimer.pos === "run")
-        this.state.videoPlayTimer.pause();
-    }
-    if (this.state.newGameTimer) {
-      if (this.state.newGameTimer.pos === "run")
-        this.state.newGameTimer.pause();
-    }
-
-    this.setState({
-      tiles: [],
-      muted: true,
-      paused: false,
-      pausedTiles: true,
-      initializedVideo: false,
-      newGameTimer: null,
-      videoPlayTimer: null,
-      gameStarted: false,
-      time:
-        (15 * this.state.gameSettings.devStartingHexNote) /
-        this.state.gameSettings.bpm,
-      prevTime: 0,
-      currentHexNote: 0,
-      hitInRow: 0,
-      multiplier: 1
-    });
   }
   pause() {
     if (!this.state.playerReady) return;
@@ -1172,6 +1207,7 @@ export default class Game extends React.Component<GameProps> {
   }
 
   render() {
+    const gameSettings = this.props.gameSettings;
     return (
       <>
         <div className="game">
@@ -1205,24 +1241,47 @@ export default class Game extends React.Component<GameProps> {
             <button
               onClick={(e) => {
                 e.preventDefault();
-
-                var docElm = document.documentElement;
-                if (!document.fullscreenElement) {
-                  if (docElm.requestFullscreen) {
-                    docElm.requestFullscreen();
-                  } else {
-                    alert("We are unable to turn fullscreen on");
-                  }
-                } else {
-                  if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                  }
-                }
+                //this.pause();
+                this.setState({
+                  settingsShow: true
+                });
               }}
             >
-              <FontAwesomeIcon icon={faExpand} />
+              <FontAwesomeIcon icon={faCog} />
             </button>
           </nav>
+        </div>
+
+        <div
+          className={Classnames({
+            settings_slider: true,
+            settings_slider_show: this.state.settingsShow
+          })}
+        >
+          <section className="settings_close_wrapper">
+            <div
+              className="settings_close"
+              onClick={(e) => {
+                this.setState({
+                  settingsShow: false
+                });
+              }}
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </div>
+            <h1>Settings</h1>
+          </section>
+          <section className="settings_body">
+            <p>Music volume</p>
+            <StyledSlider
+              value={gameSettings.music}
+              onChange={(e, newValue) => {
+                this.props.changeMusicVolume(newValue);
+              }}
+            />
+            <p>{gameSettings.music}%</p>
+            <button onClick={this.toggleFullscreen}>Fullscreen</button>
+          </section>
         </div>
 
         <div className="player">
@@ -1231,6 +1290,7 @@ export default class Game extends React.Component<GameProps> {
             playing={!this.state.paused}
             playbackRate={this.state.gameSettings.devGameSpeed}
             muted={this.state.muted}
+            volume={gameSettings.music / 100}
             ref={this.state.playerRef}
             width={"100vw"}
             height={"100vh"}
@@ -1313,3 +1373,13 @@ export default class Game extends React.Component<GameProps> {
     );
   }
 }
+export default connect(
+  (state) => ({
+    gameSettings: state.gameSettings
+  }),
+  {
+    changeMusicVolume
+  },
+  null,
+  { forwardRef: true }
+)(Game);

@@ -27,6 +27,14 @@ const toggleGame = () => {
     type: "TOGGLEGAME"
   };
 };
+
+const changeMusicVolume = (volume = 50) => {
+  return {
+    type: "CHANGEMUSICVOLUME",
+    payload: volume
+  };
+};
+
 const setGameErrorGeneral = (error = "") => {
   return {
     type: "GENERAL",
@@ -79,5 +87,6 @@ export {
   addCustomSongToList,
   removeCustomSongFromList,
   updateCustomSongs,
-  updateBuiltInSongs
+  updateBuiltInSongs,
+  changeMusicVolume
 };

@@ -122,13 +122,10 @@ class LoadGame extends React.Component {
         } catch (err) {
           throw new Error("Received JSON data contains no 'notes' array");
         }
-        console.log(headerVal);
         if (!headerVal[0][0] && !notesVal[0][0]) {
-          console.log("ccasc2");
           if (headerVal[1][0] || notesVal[1][0]) {
             throw new Error([...headerVal[1], ...notesVal[0]][0]);
           }
-          console.log("ccasc");
           this.props.changeMenuPosition("new-game");
 
           if (!this.props.builtIn) {
@@ -158,6 +155,7 @@ class LoadGame extends React.Component {
                 notes={notesVal[2]}
                 devStartingHexNote={0}
                 builtIn={this.props.builtIn && song.header.id}
+                ref={this.state.gameRef}
               />
             ]
           });
@@ -277,6 +275,10 @@ class LoadGame extends React.Component {
                         );
                       }
                       if (this.state.game[0]) {
+                        console.log(
+                          this.state.gameRef,
+                          this.state.gameRef.current
+                        );
                         this.state.gameRef.current.refreshNotes(compiledCode);
                         setTimeout(() => {
                           this.state.gameRef.current.restart();

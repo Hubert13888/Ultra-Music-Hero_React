@@ -16,7 +16,7 @@ body {
     top: 0;
     left: 0;
   }
-  nav{
+  nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -28,7 +28,62 @@ body {
     z-index: 5;
   }
 }
+.settings_slider {
+  position: absolute;
+  z-index: 999;
+  width: 40vw;
+  height: 100vh;
+  right: 0;
+  top: 0;
+  background-color: #252525;
+  transition: transform 500ms;
+  transform: translate(100%);
+  
+  .settings_close_wrapper {
+    position: relative;
+    margin-right: 5vw;
+    width: 100%;
+    padding-right: 2vw;
+    display: flex;
+    .settings_close {
+      position: absolute;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      margin-left: 15%;
+      top: 50%;
+      transform: translateY(-50%);
+      svg {
+        color: #ddd;
+        font-size: 30px !important;
+        transition: color 200ms, transform 200ms;
+        &:hover {
+          color: #C00101;
+          transform: rotate(180deg);
+        }
+      }
+    }
+    h1 {
+      font-size: 30px;
+      width: 100%;
+      text-align: center;
+    }
+  }
+  .settings_body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 
+    p {
+      font-size: 18px;
+    }
+  }
+}
+.settings_slider_show {
+  transform: none;
+}
 .player{
   position: absolute;
   top: 0;

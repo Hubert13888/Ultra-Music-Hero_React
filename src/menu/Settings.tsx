@@ -1,17 +1,42 @@
 import React from "react";
 import "./settingsStyles.scss";
 
-export default class Credits extends React.Component {
+import Slider from "@material-ui/core/Slider";
+import { withStyles } from "@material-ui/core/styles";
+
+import { connect } from "react-redux";
+import { changeMusicVolume } from "../redux/actions";
+
+const StyledSlider = withStyles({
+  root: {
+    color: "#C00101",
+    width: "20vw"
+  }
+})(Slider);
+
+class Settings extends React.Component {
   render() {
     return (
       <>
         <h1>Settings</h1>
-        <p>
-          There are no settings available but if any will be needed I will put
-          them here
-        </p>
-        <p>Or replace this section with something else</p>
+        <p>Change music volume</p>
+        <StyledSlider
+          value={this.props.gameSettings.music}
+          onChange={(e, newValue) => {
+            this.props.changeMusicVolume(newValue);
+          }}
+        />
+        <p>{this.props.gameSettings.music}%</p>
       </>
     );
   }
 }
+
+export default connect(
+  (state) => ({
+    gameSettings: state.gameSettings
+  }),
+  {
+    changeMusicVolume
+  }
+)(Settings);
